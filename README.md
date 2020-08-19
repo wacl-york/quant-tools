@@ -1,4 +1,4 @@
-# QUANTtools
+# QUANT tools
 
 Tools for working with the QUANT data, including example code for loading the data into Python and basic analysis.
 
@@ -24,15 +24,10 @@ import matplotlib.pyplot as plt
 
 The `QUANT/Data/Clean` GoogleDrive folder needs to be available locally, either through Google Drive sync or having been manually downloaded.
 Set the `quant_folder` variable to this location, then the `load_data` function can be used.
-Calling `load_data(quant_folder)` loads all the CSV files in this folder into a single `pandas` data frame.
-However, there are options to load only subsets, such as which companies to load and specifying a timeframe.
+The basic behaviour, i.e. `load_data(quant_folder)`, loads all the CSV files in this folder into a single `pandas` data frame.
+However, there are options to load only selected subsets of companies and timeframes.
 
-The `companies` argument accepts a list with values from the 4 companies included in the study:
-
-  - `Aeroqual`
-  - `AQMesh`
-  - `Zephyr`
-  - `QuantAQ`
+The `companies` argument accepts a list with values from the 4 companies included in the study: 'Aeroqual', 'AQMesh', 'Zephyr', and 'QuantAQ'.
 
 The `start` and `end` arguments accept a date in `YYYY-mm-dd` format indicating the earliest and latest (both inclusive) dates to load data from.
 
@@ -41,7 +36,7 @@ The example below will load data from just Aeroqual and AQMesh devices, in the i
 ```python
 quant_folder = "/path/to/folder/Clean"
 df = load_data(quant_folder, companies=["Aeroqual", "AQMesh"],
-                 start="2020-01-01", end="2020-04-28")
+               start="2020-01-01", end="2020-04-28")
 df
 ```
 
@@ -92,7 +87,7 @@ plt.show()
 
 Having the data in this format makes it easy to run basic analyses, such as determining the proportion of missing observations of a particular measurement by device.
 
-The code snippet below calculates the proportion of NO2 missingness for our AQMesh and Aeroqual dataset recorded between 2020-01-01 to 2020-04-28; highlight that our 4 AQM devices all have > 60% missingness. 
+The code snippet below calculates the proportion of NO2 missingness for our AQMesh and Aeroqual dataset recorded between 2020-01-01 to 2020-04-28, highlighting that our 4 AQM devices all have > 60% missingness. 
 This can be explained by the fact that the data is resampled to 1 minute averages, but AQMesh units were recording at 15 min frequencies for much of this period.
 
 This one-line call chains together several operations:

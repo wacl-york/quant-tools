@@ -11,96 +11,6 @@ import glob
 from datetime import datetime
 import pandas as pd
 
-def get_date_from_filename(filename):
-    """
-    Extracts the recording data from a QUANT filename.
-
-    QUANT clean data files are named according to the convention
-    "<manufacturer>_<device>_<date>.csv", where <date> is in YYYY-mm-dd format.
-
-    This function extracts date and parses it as a datetime object.
-    NB: this function returns a datetime object rather than date, despite
-    not needing second precision.
-    This is because datetime has a robust parsing method, while date's
-    fromisoformat parser was only added in Python 3.7
-
-    Args:
-        - filename (str): The CSV filename.
-
-    Returns:
-        The date of recording as a datetime object.
-    """
-    # Remove directories to just get base filename
-    base = os.path.basename(filename)
-    # Remove file extension
-    try:
-        fn = os.path.splitext(base)[0]
-    except IndexError:
-        return None  # Shouldn't ever be reached
-
-    # Extract date, assuming syntax <manufacturer>_<device>_<date>
-    try:
-        date_str = fn.split("_")[2]
-    except IndexError:
-        return None
-
-    # Parse date from string
-    try:
-        dt = datetime.strptime(date_str, "%Y-%m-%d")
-    except ValueError:
-        return None
-    return dt
-
-def load_file(filename, resample="1Min"):
-    """
-    Loads a single CSV file into Pandas.
-
-    After reading the file into Pandas, duplicate rows are dropped and any
-    required resampling is performed.
-
-    Args:
-        - filename (str): Filename to load. Must be a CSV.
-        - resample (str): Resampling format to use as specified by
-            pandas.resample. If None then doesn't do any resampling.
-
-    Returns:
-        A pandas dataframe in long format with 3 columns:
-            - timestamp
-            - measurand
-            - value
-    """
-    # Read this CSV file into pandas
-    df = pd.read_csv(filename,
-                     dtype={'measurand': 'object', 'value': 'float64'},
-                     parse_dates=[0],
-                     infer_datetime_format=True)
-
-    # Remove multiple measurements of the same pollutant at the same timestamp
-    # There shouldn't be many, if at all, but I've found a few in 1 Zephyr file
-    df.drop_duplicates(subset=['timestamp', 'measurand'], inplace=True,
-                       keep=False)
-
-    # Resample to 1 min average. Has 3 benefits: reduces Zephyyr data down from
-    # ~10s to every minute, rounds every recording to the nearest whole minute,
-    # and creates rows for every minute even if we didn't have any samples during that minute.
-    # This last point helps to identify missingness.
-    # To resample, need to convert to wide, resample, then back to long
-    if resample is not None:
-        wide = df.pivot(index="timestamp", columns="measurand", values="value")
-        try:
-            wide = wide.resample(resample).mean()
-            df = wide.reset_index().melt(id_vars="timestamp")
-        except ValueError:
-            print("Cannot resample {} to '{}' frequency. Data will be in its original time resolution".format(filename, resample))
-
-    # Extract manufacturer and device from filenames which are in the format
-    # <manufacturer>_<device>_<date>.csv
-    manufacturer, device, date = os.path.basename(filename).split("_")
-    df['manufacturer'] = manufacturer
-    df['device'] = device
-
-    return df
-
 def load_data(folder, companies=None, start=None, end=None, resample="1Min",
               subset=['NO', 'NO2', 'O3', 'CO2', 'CO', 'Temperature', 'RelHumidity']):
     """
@@ -158,7 +68,8 @@ def load_data(folder, companies=None, start=None, end=None, resample="1Min",
     dfs = []
     for fn in fns:
         df = load_file(fn, resample)
-        dfs.append(df)
+        if df is not None:
+            dfs.append(df)
 
     # Combine all the individual data frames into a single data frame
     if len(dfs) == 0:
@@ -195,3 +106,94 @@ def load_data(folder, companies=None, start=None, end=None, resample="1Min",
     wide.columns.name = None
 
     return wide
+
+def load_file(filename, resample="1Min"):
+    """
+    Loads a single CSV file into Pandas.
+
+    After reading the file into Pandas, duplicate rows are dropped and any
+    required resampling is performed.
+
+    Args:
+        - filename (str): Filename to load. Must be a CSV.
+        - resample (str): Resampling format to use as specified by
+            pandas.resample. If None then doesn't do any resampling.
+
+    Returns:
+        A pandas dataframe in long format with 3 columns:
+            - timestamp
+            - measurand
+            - value
+    """
+    # Read this CSV file into pandas
+    df = pd.read_csv(filename,
+                     dtype={'measurand': 'object', 'value': 'float64'},
+                     parse_dates=[0],
+                     infer_datetime_format=True)
+
+    # Remove multiple measurements of the same pollutant at the same timestamp
+    # There shouldn't be many, if at all, but I've found a few in 1 Zephyr file
+    df.drop_duplicates(subset=['timestamp', 'measurand'], inplace=True,
+                       keep=False)
+
+    # Resample to 1 min average. Has 3 benefits: reduces Zephyyr data down from
+    # ~10s to every minute, rounds every recording to the nearest whole minute,
+    # and creates rows for every minute even if we didn't have any samples during that minute.
+    # This last point helps to identify missingness.
+    # To resample, need to convert to wide, resample, then back to long
+    if resample is not None:
+        wide = df.pivot(index="timestamp", columns="measurand", values="value")
+        try:
+            wide = wide.resample(resample).mean()
+            df = wide.reset_index().melt(id_vars="timestamp")
+        except ValueError:
+            print("Cannot resample {} to '{}' frequency. Data will be in its original time resolution".format(filename, resample))
+
+    # Extract manufacturer and device from filenames which are in the format
+    # <manufacturer>_<device>_<date>.csv
+    manufacturer, device, date = os.path.basename(filename).split("_")
+    df['manufacturer'] = manufacturer
+    df['device'] = device
+
+    return df
+
+def get_date_from_filename(filename):
+    """
+    Extracts the recording data from a QUANT filename.
+
+    QUANT clean data files are named according to the convention
+    "<manufacturer>_<device>_<date>.csv", where <date> is in YYYY-mm-dd format.
+
+    This function extracts date and parses it as a datetime object.
+    NB: this function returns a datetime object rather than date, despite
+    not needing second precision.
+    This is because datetime has a robust parsing method, while date's
+    fromisoformat parser was only added in Python 3.7
+
+    Args:
+        - filename (str): The CSV filename.
+
+    Returns:
+        The date of recording as a datetime object.
+    """
+    # Remove directories to just get base filename
+    base = os.path.basename(filename)
+    # Remove file extension
+    try:
+        fn = os.path.splitext(base)[0]
+    except IndexError:
+        return None  # Shouldn't ever be reached
+
+    # Extract date, assuming syntax <manufacturer>_<device>_<date>
+    try:
+        date_str = fn.split("_")[2]
+    except IndexError:
+        return None
+
+    # Parse date from string
+    try:
+        dt = datetime.strptime(date_str, "%Y-%m-%d")
+    except ValueError:
+        return None
+
+    return dt
