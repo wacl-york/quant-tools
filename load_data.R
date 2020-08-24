@@ -1,0 +1,133 @@
+library(data.table)
+library(lubridate)
+
+# The filepath to the folder where the Clean files are stored
+# Files are named in the format <manufacturer>_<device>_<date>.csv
+DATA_FOLDER <- "/home/stuart/Documents/quant_data/clean"
+
+#' Extracts the recording data from a QUANT filename.
+#'
+#' QUANT clean data files are named according to the convention
+#' "<manufacturer>_<device>_<date>.csv", where <date> is in YYYY-mm-dd format.
+#'
+#' Args:
+#'     - filename (str): The CSV filename.
+#'
+#' Returns:
+#'     The date of recording as a Date object.
+get_date_from_filename <- function(filename) {
+    # Remove directories to just get base filename
+    base <- basename(filename)
+    # Remove file extension
+    fn <- tools::file_path_sans_ext(base)
+
+    # Extract date, assuming syntax <manufacturer>_<device>_<date>
+    fn_split <- strsplit(fn, "_")[[1]]
+    if (length(fn_split) != 3) {
+        return(NA)
+    }
+    date_str <- fn_split[3]
+
+    # Parse date from string. Returns NA if parse failed
+    dt <- lubridate::as_date(date_str, format="%Y-%m-%d")
+    dt
+}
+
+#' Loads a single CSV file as a data.table.
+#'
+#' After reading the file into memory, duplicate rows are dropped and any
+#' required resampling is performed.
+#'
+#' Args:
+#'     - filename (str): Filename to load. Must be a CSV.
+#'     - resample (str): Resampling format to use as specified by
+#'         lubridate::floor_date. If NULL then doesn't do any resampling.
+#'
+#' Returns:
+#'     A data.table in long format with 3 columns:
+#'         - timestamp
+#'         - measurand
+#'         - value
+load_file <- function(fn, resample=NULL) {
+    df <- fread(fn)
+    df <- unique(df, by=c('timestamp', 'measurand'))
+    df[, timestamp := as_datetime(timestamp)]
+
+    if (!is.null(resample)) {
+        df[, timestamp := floor_date(timestamp, unit=resample)]
+        df <- df[, .(value = mean(value)), by=c('timestamp', 'measurand') ]
+    }
+    df[, c("manufacturer", "device") := tstrsplit(basename(fn), "_", fixed=TRUE)[1:2]]
+    df
+}
+
+#' Loads QUANT data from multiple files into a single data.table.
+#'
+#' Args:
+#'     - folder (str): The folder containing all the CSV files. This should be
+#'         a mirror of the QUANT/Data/Clean GoogleDrive folder.
+#'     - companies (character vector): A list of companies to load data from. Can contain
+#'     values: 'Aeroqual', 'AQMesh', 'Zephyr', 'QuantAQ'.
+#'     - start (str): The earliest date to include data from, in YYYY-mm-dd
+#'         format. If not provided then uses the earliest available date.
+#'     - end (str): The latest date to include data from, in YYYY-mm-dd
+#'         format. If not provided then uses the latest available date.
+#'     - resample (str): Resampling format to use as specified by
+#'         lubridate::floor_date. If NULL then doesn't do any resampling.
+#'     - subset (character vector): A list of pollutants to include in the final data
+#'         frame. If NULL then returns all.
+#'
+#' Returns:
+#'     A data.table with 1 row per observation per device, resampled to the
+#'     specified frequency. There are manufacturer and device columns to index
+#'     where the recording was made, and there are measurement columns for each
+#'     pollutant of interest.
+load_data <- function(folder, 
+                      companies=NULL,
+                      start=NULL,
+                      end=NULL,
+                      resample="1 minute",
+                      subset=c('NO', 'NO2', 'O3', 'CO2', 'CO', 'Temperature', 'RelHumidity')
+) {
+    if (substr(folder, nchar(folder), nchar(folder)) != '/') {
+        folder <- sprintf("%s/", folder)
+    }
+    
+    # Find all files from the selected companies
+    if (is.null(companies)) {
+        fns <- Sys.glob(sprintf("%s*.csv", folder))
+    } else {
+        fns <- unname(unlist(sapply(companies, function(x) Sys.glob(sprintf("%s%s*.csv", folder, x)))))
+    }
+    
+    # Subset to dates of interest
+    if (!is.null(start)) {
+        start_dt <- lubridate::as_date(start, format="%Y-%m-%d")
+        fns <- fns[sapply(fns, get_date_from_filename) >= start_dt]
+    }
+    if (!is.null(end)) {
+        end_dt <- lubridate::as_date(end, format="%Y-%m-%d")
+        fns <- fns[sapply(fns, get_date_from_filename) <= end_dt]
+    }
+    
+    if (length(fns) == 0) {
+        stop("No filenames found that match criteria.")
+        return(NULL)
+    }
+    
+    # Read into 1 data table at once
+    df_2 <- rbindlist(lapply(fns, load_file, resample=resample))
+    
+    # Renaming temperature measurements
+    df_2[ measurand == 'Temperature' & manufacturer == 'Zephyr', measurand := 'TempPCB' ]
+    df_2[ measurand == 'TempAmb' & manufacturer == 'Zephyr', measurand := 'Temperature' ]
+    df_2[ measurand == 'RelHumidity' & manufacturer == 'Zephyr', measurand := 'RelHumPCB' ]
+    df_2[ measurand == 'RelHumAmb' & manufacturer == 'Zephyr', measurand := 'RelHumidity' ]
+    df_2[ measurand == 'TempMan' & manufacturer == 'QuantAQ', measurand := 'Temperature' ]
+    df_2[ measurand == 'RelHumMan' & manufacturer == 'QuantAQ', measurand := 'RelHumidity' ]
+    
+    subset <- c('NO', 'NO2', 'O3', 'CO2', 'CO', 'Temperature', 'RelHumidity')
+    df_2 <- df_2[ measurand %in% subset ]
+        
+    dcast(df_2, timestamp + manufacturer + device  ~ measurand)
+}

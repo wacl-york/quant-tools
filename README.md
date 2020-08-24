@@ -1,21 +1,21 @@
 # QUANT tools
 
-Tools for working with the QUANT data, including example code for loading the data into Python and basic analysis.
+Tools for working with QUANT data, including example code for loading the data into Python and performing basic analysis.
 
 # Installation 
 
-Download the `load_data.py` file and place it in your working directory, or somewhere where it can be imported.
+Download `load_data.py` and place it in your working directory or somewhere where it can be imported.
 
-# Example
+# Example usage
 
-Firstly load the provided `load_data` function.
+Firstly import the `load_data` function.
 
 ```python
 from load_data import load_data
 ```
 
 `load_data` will also import `pandas`, so it doesn't need to be explicitly loaded now.
-Also load `seaborn` and `matplotlib` for plotting.
+Also import `seaborn` and `matplotlib` for plotting.
 
 ```python
 import seaborn as sns
@@ -24,11 +24,10 @@ import matplotlib.pyplot as plt
 
 The `QUANT/Data/Clean` GoogleDrive folder needs to be available locally, either through Google Drive sync or having been manually downloaded.
 Set the `quant_folder` variable to this location, then the `load_data` function can be used.
-The basic behaviour, i.e. `load_data(quant_folder)`, loads all the CSV files in this folder into a single `pandas` data frame.
-However, there are options to load only selected subsets of companies and timeframes.
+The default behaviour (`load_data(quant_folder)`) loads all the CSV files in this folder into a single `pandas` data frame, however, there are options to reduce this to certain files of interest.
 
-The `companies` argument accepts a list with values from the 4 companies included in the study: 'Aeroqual', 'AQMesh', 'Zephyr', and 'QuantAQ'.
-
+The `companies` argument allows you to specify which companies' data to load.
+It accepts a list with possible values: 'Aeroqual', 'AQMesh', 'Zephyr', and 'QuantAQ'.
 The `start` and `end` arguments accept a date in `YYYY-mm-dd` format indicating the earliest and latest (both inclusive) dates to load data from.
 
 The example below will load data from just Aeroqual and AQMesh devices, in the inclusive period 2020-01-01 to 2020-04-28.
@@ -69,11 +68,10 @@ By default, the following measurands are included in the final data frame:
   - Temperature
   - Relative humidity
 
-This is specified by the default value to the `subset` argument, although it can be overwritten to select particular pollutants of interest: `load_data(quant_folder, subset=['NO2', 'O3'])`.
-To see the full range of possible values, set `subset=None` to return all possible columns.
+However, the `subset` argument can be overwritten to select particular pollutants of interest: `load_data(quant_folder, subset=['NO2', 'O3'])`, or it can be set to `None` to return all possible columns.
 
-Once the data frame has been loaded, it can be queried using [`query`](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.query.html) to extract specific rows using human readable strings.
-For example, the code snippet below shows how to specify a specific manufacturer and a time-frame.
+Once the data frame has been loaded, it can be queried using [the pandas `query` method](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.query.html) to extract specific rows using human readable strings.
+The code snippet below shows how to specify a specific manufacturer and a time-frame.
 NO2 time-series from this period are then plotted, using the `device` column to colour each device's line.
 
 ```
@@ -85,7 +83,7 @@ plt.show()
 
 ![AQMesh line plot](figures/aqmesh_line.png)
 
-Having the data in this format makes it easy to run basic analyses, such as determining the proportion of missing observations of a particular measurement by device.
+Having the data in this format makes it easy to run basic analyses, such as determining the proportion of missing observations by device.
 
 The code snippet below calculates the proportion of NO2 missingness for our AQMesh and Aeroqual dataset recorded between 2020-01-01 to 2020-04-28, highlighting that our 4 AQM devices all have > 60% missingness. 
 This can be explained by the fact that the data is resampled to 1 minute averages, but AQMesh units were recording at 15 min frequencies for much of this period.
@@ -121,10 +119,10 @@ Name: NO2, dtype: float64
 
 # Extending this functionality
 
-Both the `load_data.py` file and the examples shown here are not intended to be the definitive way of using the QUANT data, but instead are merely examples of one way this can be achieved.
-Feel free to extend the `load_data.py` function to better fit your own needs and workflow.
+Both `load_data.py` and the examples shown here are not intended to be the definitive way of using the QUANT data, but instead are merely examples of one way this can be achieved.
 
-The `load_data` function is fairly simple, only opening files and running very basic pre-processing steps (resampling, subsetting columns).
+Feel free to extend the `load_data` function to better fit your own needs and workflow.
+It is fairly straightforward, only opening files and running very basic pre-processing steps (resampling, subsetting columns).
 However, one thing to bear in mind is that it is also renaming some columns related to temperature and humidity to ensure that the `Temperature` and `RelHumidity` columns are measuring the same quantity across companies.
 In particular, it renames the following measurands from the clean CSV files:
 
@@ -145,3 +143,6 @@ Similarily, we are interested in the manifold conditions so these column are ren
 Ideally, this renaming would be applied in the scraper and retroactively applied to the full dataset.
 However, this has not been done to ensure backwards compatibility, although it might be worth adding at some point in the future.
 
+# R implementation
+
+There is also an R version of `load_data`, found in `load_data.R`, with example usage shown in `example.R`.
