@@ -76,7 +76,7 @@ def load_data(folder, companies=None, start=None, end=None, resample="1Min",
         print("No data found for the specified parameters.")
         return None
 
-    df_combined = pd.concat(dfs)
+    df_combined = pd.concat(dfs, ignore_index=True)
 
     # Rename the unuseful Temperature label for Zephyr to TempPCB to be explicit in what it measures
     df_combined.loc[(df_combined['measurand'] == 'Temperature') & (df_combined['manufacturer'] == 'Zephyr'), 'measurand'] = 'TempPCB'
