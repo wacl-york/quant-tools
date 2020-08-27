@@ -10,9 +10,14 @@ import os
 import glob
 from datetime import datetime
 import pandas as pd
+from functools import partial
+from multiprocessing import Pool
+
 
 def load_data(folder, companies=None, start=None, end=None, resample="1Min",
-              subset=['NO', 'NO2', 'O3', 'CO2', 'CO', 'Temperature', 'RelHumidity']):
+              subset=['NO', 'NO2', 'O3', 'CO2', 'CO', 'Temperature',
+                      'RelHumidity'],
+              num_cpus=-1):
     """
     Loads QUANT data from multiple files into a single pandas data frame.
 
@@ -29,6 +34,9 @@ def load_data(folder, companies=None, start=None, end=None, resample="1Min",
             pandas.resample. If None then doesn't do any resampling.
         - subset (list): A list of pollutants to include in the final data
             frame. If None then returns all.
+        - num_cpus (int): The number of cpus to use when reading the individual
+            files. If < 1, then the maximum number of cpus is obtained from
+            os.cpu_count().
 
     Returns:
         A pandas data frame with 1 row per observation per device, resampled to the
@@ -64,12 +72,15 @@ def load_data(folder, companies=None, start=None, end=None, resample="1Min",
             return None
         fns = [ fn for fn in fns if get_date_from_filename(fn) is not None and get_date_from_filename(fn) <= end_dt ]
 
-    # Read all files into a list of data frames
-    dfs = []
-    for fn in fns:
-        df = load_file(fn, resample)
-        if df is not None:
-            dfs.append(df)
+    if num_cpus <= 0:
+        num_cpus = os.cpu_count()
+
+    # Load all files into a list of DataFrames
+    # From docs:
+    # Note that map may cause high memory usage for very long iterables.
+    # Consider using imap() or imap_unordered() with explicit chunksize option for better efficiency.
+    with Pool(processes=num_cpus) as process_pool:
+        dfs = process_pool.map(partial(load_file, resample=resample), fns)
 
     # Combine all the individual data frames into a single data frame
     if len(dfs) == 0:
