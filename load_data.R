@@ -1,4 +1,5 @@
 library(data.table)
+library(parallel)
 library(lubridate)
 
 # The filepath to the folder where the Clean files are stored
@@ -76,6 +77,8 @@ load_file <- function(fn, resample=NULL) {
 #'         lubridate::floor_date. If NULL then doesn't do any resampling.
 #'     - subset (character vector): A list of pollutants to include in the final data
 #'         frame. If NULL then returns all.
+#'     - n_cores (int): Number of cores to use when loading data. NB: DOESN'T WORK ON WINDOWS.
+#'         If n_cores < 1 (as in the default), then the program is run in a single thread
 #'
 #' Returns:
 #'     A data.table with 1 row per observation per device, resampled to the
@@ -87,7 +90,8 @@ load_data <- function(folder,
                       start=NULL,
                       end=NULL,
                       resample="1 minute",
-                      subset=c('NO', 'NO2', 'O3', 'CO2', 'CO', 'Temperature', 'RelHumidity')
+                      subset=c('NO', 'NO2', 'O3', 'CO2', 'CO', 'Temperature', 'RelHumidity'),
+                      n_cores=-1
 ) {
     if (substr(folder, nchar(folder), nchar(folder)) != '/') {
         folder <- sprintf("%s/", folder)
@@ -116,7 +120,11 @@ load_data <- function(folder,
     }
     
     # Read into 1 data table at once
-    df_2 <- rbindlist(lapply(fns, load_file, resample=resample))
+    if (n_cores > 0) {
+        df_2 <- rbindlist(mclapply(fns, load_file, resample=resample, mc.cores=n_cores))
+    } else {
+        df_2 <- rbindlist(lapply(fns, load_file, resample=resample))
+    }
     
     # Renaming temperature measurements
     df_2[ measurand == 'Temperature' & manufacturer == 'Zephyr', measurand := 'TempPCB' ]
