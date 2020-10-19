@@ -101,6 +101,19 @@ def load_data(folder, companies=None, start=None, end=None, resample="1Min",
     df_combined.loc[(df_combined['measurand'] == 'TempMan') & (df_combined['manufacturer'] == 'QuantAQ'), 'measurand'] = 'Temperature'
     df_combined.loc[(df_combined['measurand'] == 'RelHumMan') & (df_combined['manufacturer'] == 'QuantAQ'), 'measurand'] = 'RelHumidity'
 
+    # Rename PurpleAir columns. This wasn't done for the initial download but
+    # has been for every download since
+    df_combined.loc[(df_combined['measurand'] == 'pm1_0_atm') & (df_combined['manufacturer'] == 'PurpleAir'), 'measurand'] = 'PM1'
+    df_combined.loc[(df_combined['measurand'] == 'pm2_5_atm') & (df_combined['manufacturer'] == 'PurpleAir'), 'measurand'] = 'PM2.5'
+    df_combined.loc[(df_combined['measurand'] == 'pm10_0_atm') & (df_combined['manufacturer'] == 'PurpleAir'), 'measurand'] = 'PM10'
+    # And the OPC-B measurements too
+    df_combined.loc[(df_combined['measurand'] == 'pm1_0_atm_b') & (df_combined['manufacturer'] == 'PurpleAir'), 'measurand'] = 'PM1_b'
+    df_combined.loc[(df_combined['measurand'] == 'pm2_5_atm_b') & (df_combined['manufacturer'] == 'PurpleAir'), 'measurand'] = 'PM2.5_b'
+    df_combined.loc[(df_combined['measurand'] == 'pm10_0_atm_b') & (df_combined['manufacturer'] == 'PurpleAir'), 'measurand'] = 'PM10_b'
+
+    df_combined.loc[(df_combined['measurand'] == 'current_humidity') & (df_combined['manufacturer'] == 'PurpleAir'), 'measurand'] = 'RelHumidity'
+    df_combined.loc[(df_combined['measurand'] == 'current_temp_f') & (df_combined['manufacturer'] == 'PurpleAir'), 'measurand'] = 'Temperature_F'
+
     # Subset to specified pollutants
     if subset is not None:
         if isinstance(subset, str):

@@ -133,7 +133,15 @@ load_data <- function(folder,
     df_2[ measurand == 'RelHumAmb' & manufacturer == 'Zephyr', measurand := 'RelHumidity' ]
     df_2[ measurand == 'TempMan' & manufacturer == 'QuantAQ', measurand := 'Temperature' ]
     df_2[ measurand == 'RelHumMan' & manufacturer == 'QuantAQ', measurand := 'RelHumidity' ]
-    
+    df_2[ measurand == 'current_temp_f' & manufacturer == 'PurpleAir', measurand := 'Temperature_F' ]
+    df_2[ measurand == 'current_humidity' & manufacturer == 'PurpleAir', measurand := 'RelHumidity' ]
+    df_2[ measurand == 'pm1_0_atm' & manufacturer == 'PurpleAir', measurand := 'PM1' ]
+    df_2[ measurand == 'pm2_5_atm' & manufacturer == 'PurpleAir', measurand := 'PM2.5' ]
+    df_2[ measurand == 'pm10_0_atm' & manufacturer == 'PurpleAir', measurand := 'PM10' ]
+    df_2[ measurand == 'pm1_0_atm_b' & manufacturer == 'PurpleAir', measurand := 'PM1_b' ]
+    df_2[ measurand == 'pm2_5_atm_b' & manufacturer == 'PurpleAir', measurand := 'PM2.5_b' ]
+    df_2[ measurand == 'pm10_0_atm_b' & manufacturer == 'PurpleAir', measurand := 'PM10_b' ]
+
     subset <- c('NO', 'NO2', 'O3', 'CO2', 'CO', 'Temperature', 'RelHumidity')
     df_2 <- df_2[ measurand %in% subset ]
         
