@@ -125,6 +125,9 @@ load_data <- function(folder,
     } else {
         df_2 <- rbindlist(lapply(fns, load_file, resample=resample))
     }
+
+    # Drop duplicate values
+    df_2 <- unique(df_2, by=c('timestamp', 'measurand', 'manufacturer', 'device'))
     
     # Renaming temperature measurements
     df_2[ measurand == 'Temperature' & manufacturer == 'Zephyr', measurand := 'TempPCB' ]
@@ -142,7 +145,6 @@ load_data <- function(folder,
     df_2[ measurand == 'pm2_5_atm_b' & manufacturer == 'PurpleAir', measurand := 'PM2.5_b' ]
     df_2[ measurand == 'pm10_0_atm_b' & manufacturer == 'PurpleAir', measurand := 'PM10_b' ]
 
-    subset <- c('NO', 'NO2', 'O3', 'CO2', 'CO', 'Temperature', 'RelHumidity')
     df_2 <- df_2[ measurand %in% subset ]
         
     dcast(df_2, timestamp + manufacturer + device  ~ measurand)
