@@ -69,6 +69,7 @@ load_file <- function(fn, resample=NULL) {
 #'         a mirror of the QUANT/Data/Clean GoogleDrive folder.
 #'     - companies (character vector): A list of companies to load data from. Can contain
 #'     values: 'Aeroqual', 'AQMesh', 'Zephyr', 'QuantAQ'.
+#'     - devices (character vector): A list of devices to load data from, i.e: `AQY872`, `AQM391`, `Zep188`, `Ari063`. Both `companies` and `devices` can be provided.
 #'     - start (str): The earliest date to include data from, in YYYY-mm-dd
 #'         format. If not provided then uses the earliest available date.
 #'     - end (str): The latest date to include data from, in YYYY-mm-dd
@@ -87,6 +88,7 @@ load_file <- function(fn, resample=NULL) {
 #'     pollutant of interest.
 load_data <- function(folder, 
                       companies=NULL,
+                      devices=NULL,
                       start=NULL,
                       end=NULL,
                       resample="1 minute",
@@ -97,11 +99,19 @@ load_data <- function(folder,
         folder <- sprintf("%s/", folder)
     }
     
-    # Find all files from the selected companies
-    if (is.null(companies)) {
+    # Find specified files
+    if (is.null(companies) && is.null(devices)) {
         fns <- Sys.glob(sprintf("%s*.csv", folder))
     } else {
-        fns <- unname(unlist(sapply(companies, function(x) Sys.glob(sprintf("%s%s*.csv", folder, x)))))
+        fns <- c()
+        if (!is.null(companies)) {
+            company_fns <- unname(unlist(sapply(companies, function(x) Sys.glob(sprintf("%s%s*.csv", folder, x)))))
+            fns <- c(fns, company_fns)
+        }
+        if (!is.null(devices)) {
+            device_fns <- unname(unlist(sapply(devices, function(x) Sys.glob(sprintf("%s*%s*.csv", folder, x)))))
+            fns <- c(fns, device_fns)
+        }
     }
     
     # Subset to dates of interest
