@@ -2,10 +2,6 @@ library(data.table)
 library(parallel)
 library(lubridate)
 
-# The filepath to the folder where the Clean files are stored
-# Files are named in the format <manufacturer>_<device>_<date>.csv
-DATA_FOLDER <- "/home/stuart/Documents/quant_data/clean"
-
 #' Extracts the recording data from a QUANT filename.
 #'
 #' QUANT clean data files are named according to the convention
