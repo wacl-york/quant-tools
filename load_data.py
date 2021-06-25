@@ -17,7 +17,8 @@ from multiprocessing import Pool
 def load_data(folder, companies=None, start=None, end=None, resample="1Min",
               subset=['NO', 'NO2', 'O3', 'CO2', 'CO', 'Temperature',
                       'RelHumidity'],
-              num_cpus=-1):
+              num_cpus=-1,
+              log_interval = 5):
     """
     Loads QUANT data from multiple files into a single pandas data frame.
 
@@ -37,6 +38,8 @@ def load_data(folder, companies=None, start=None, end=None, resample="1Min",
         - num_cpus (int): The number of cpus to use when reading the individual
             files. If < 1, then the maximum number of cpus is obtained from
             os.cpu_count().
+        - log_intervals (int): Percentage intervals to display logs when reading
+            files.
 
     Returns:
         A pandas data frame with 1 row per observation per device, resampled to the
@@ -76,11 +79,16 @@ def load_data(folder, companies=None, start=None, end=None, resample="1Min",
         num_cpus = os.cpu_count()
 
     # Load all files into a list of DataFrames
-    # From docs:
-    # Note that map may cause high memory usage for very long iterables.
-    # Consider using imap() or imap_unordered() with explicit chunksize option for better efficiency.
+    # If imap is using lots of memory then can look at increasing chunk size
+    last_print = 0
+    dfs = []
     with Pool(processes=num_cpus) as process_pool:
-        dfs = process_pool.map(partial(load_file, resample=resample), fns)
+        for i, df in enumerate(process_pool.imap(partial(load_file, resample=resample), fns)):
+            dfs.append(df)
+            pct = round(i / len(fns) * 100)
+            if log_interval > 0 and pct % log_interval == 0 and pct > last_print:
+                print(f"Loaded files {i}/{len(fns)} ({pct}%)")
+                last_print = pct
 
     # Combine all the individual data frames into a single data frame
     if len(dfs) == 0:
@@ -88,6 +96,10 @@ def load_data(folder, companies=None, start=None, end=None, resample="1Min",
         return None
 
     df_combined = pd.concat(dfs, ignore_index=True)
+    # Shouldn't be needed but will keep as a backstop
+    df_combined.drop_duplicates(inplace=True, subset=["timestamp",
+                                                      "manufacturer", "device",
+                                                      "measurand"], keep="first")
 
     # Rename the unuseful Temperature label for Zephyr to TempPCB to be explicit in what it measures
     df_combined.loc[(df_combined['measurand'] == 'Temperature') & (df_combined['manufacturer'] == 'Zephyr'), 'measurand'] = 'TempPCB'
