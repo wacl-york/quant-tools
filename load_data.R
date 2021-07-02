@@ -151,7 +151,8 @@ load_data <- function(folder,
     df_2[ measurand == 'pm2_5_atm_b' & manufacturer == 'PurpleAir', measurand := 'PM2.5_b' ]
     df_2[ measurand == 'pm10_0_atm_b' & manufacturer == 'PurpleAir', measurand := 'PM10_b' ]
 
-    df_2 <- df_2[ measurand %in% subset ]
+    if (!is.null(subset))
+        df_2 <- df_2[ measurand %in% subset ]
         
     dcast(df_2, timestamp + manufacturer + device  ~ measurand)
 }
