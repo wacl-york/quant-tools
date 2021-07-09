@@ -156,16 +156,23 @@ def load_file(filename, resample="1Min"):
             pandas.resample. If None then doesn't do any resampling.
 
     Returns:
-        A pandas dataframe in long format with 3 columns:
+        A pandas dataframe in long format with 5 columns:
             - timestamp
             - measurand
             - value
+            - manufacturer
+            - device
     """
     # Read this CSV file into pandas
-    df = pd.read_csv(filename,
-                     dtype={'measurand': 'object', 'value': 'float64'},
-                     parse_dates=[0],
-                     infer_datetime_format=True)
+    try:
+        df = pd.read_csv(filename,
+                         dtype={'measurand': 'object', 'value': 'float64'},
+                         parse_dates=[0],
+                         infer_datetime_format=True)
+    except Exception as ex:
+        print(f"Error when reading file {os.path.basename(filename)}!\n{ex}")
+        return pd.DataFrame(columns=["timestamp", "manufacturer", "device",
+                                     "measurand", "value"])
 
     # Remove multiple measurements of the same pollutant at the same timestamp
     # There shouldn't be many, if at all, but I've found a few in 1 Zephyr file
