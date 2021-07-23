@@ -1,12 +1,15 @@
 # QUANT tools
 
-Tools for working with QUANT data, including example code for loading the data into Python and performing basic analysis.
+Tools for working with QUANT data, either directly from the CSV files or from the cleaned database.
+Example code is included for loading the data into Python and performing basic analysis.
 
-# Installation 
+# Reading data from CSV
+
+## Installation 
 
 Download `load_data.py` and place it in your working directory or somewhere where it can be imported.
 
-# Example usage
+## Example usage
 
 Firstly import the `load_data` function.
 
@@ -117,7 +120,7 @@ AQY875     0.001261
 Name: NO2, dtype: float64
 ```
 
-# Extending this functionality
+## Extending this functionality
 
 Both `load_data.py` and the examples shown here are not intended to be the definitive way of using the QUANT data, but instead are merely examples of one way this can be achieved.
 
@@ -143,6 +146,33 @@ Similarily, we are interested in the manifold conditions so these column are ren
 Ideally, this renaming would be applied in the scraper and retroactively applied to the full dataset.
 However, this has not been done to ensure backwards compatibility, although it might be worth adding at some point in the future.
 
-# R implementation
+## R implementation
 
 There is also an R version of `load_data`, found in `load_data.R`, with example usage shown in `example.R`.
+
+# Reading data from the database
+
+TODO
+
+# Setting up the database
+
+The database was created in July 2021 using data from 2019-12-10 to 2021-06-30 from the 5 companies in the main study, from devices situated at Manchester, York, Birmingham and London.
+The database also contains reference measurements for these sites.
+The schema is shown in an entity-relationship diagram in `setup-database/schema-design`.
+
+The database can be recreated using the files contained in the live `QUANT/Data/Clean` folder, and the various back-ups in `QUANT/Data/One off downloads` using the following steps:
+
+  1. Download the Clean and One off download folders and make them available locally
+  2. Run each of the `collate_<company>.R` scripts in `setup-database/1-preprocess-lcs-data`. These scripts collate and clean the multiple datasets per company into a single CSV per company
+  3. Run `setup-database/2-populate-db/1_create_schema.sql` to create the database relations
+  4. Run `setup-database/2-populate-db/2_populate_database.R` to populate many of the smaller lookup tables
+  5. Run `setup-database/2-populate-db/3_populate_measurements.sql` to populate the largest tables containing the LCS and reference measurements
+
+The reason that loading the database is split between steps 4 and 5 is because I had initially preferred to do it from R, as I can munge data far more quickly in R than sql. 
+However, the R ODBC interface is extremely slow and also had problems running out of memory when trying to load the millions of measurement rows.
+The `\copy` command in `psql` instead is far more efficient, so instead I setup the small tables and save CSVs containing the measurement files ready to be inserted into the DB in step 4, then do the final loading in 5.
+
+
+
+
+
