@@ -152,7 +152,13 @@ There is also an R version of `load_data`, found in `load_data.R`, with example 
 
 # Reading data from the database
 
-TODO
+**NB: the database can only be accessed while on the university network**.
+If you are not on campus then you must use the VPN as detailed here [https://www.york.ac.uk/it-services/services/vpn/](https://www.york.ac.uk/it-services/services/vpn/).
+
+Firstly, install the `sqlalchemy` and `psycopg2` packages.
+
+Connecting to the database is fairly straightforward, see the examples in `example_db.py` for guidance.
+You will need certain credentials that should have been made available to you.
 
 # Setting up the database
 
@@ -171,8 +177,3 @@ The database can be recreated using the files contained in the live `QUANT/Data/
 The reason that loading the database is split between steps 4 and 5 is because I had initially preferred to do it from R, as I can munge data far more quickly in R than sql. 
 However, the R ODBC interface is extremely slow and also had problems running out of memory when trying to load the millions of measurement rows.
 The `\copy` command in `psql` instead is far more efficient, so instead I setup the small tables and save CSVs containing the measurement files ready to be inserted into the DB in step 4, then do the final loading in 5.
-
-
-
-
-

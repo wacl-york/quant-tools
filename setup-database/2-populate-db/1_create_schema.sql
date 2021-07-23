@@ -5,6 +5,11 @@
 -- tables, primary and foreign keys and manages access
 -- This is all done in the default schema 'waclquant'
 
+-- NB: The `tablefunc` module should be installed on
+-- the database prior to running this script.
+-- Its installation isn't included in this script
+-- as we do not have SU access to ITS hosted DBs
+
 DROP TABLE IF EXISTS LCSDevices CASCADE;
 DROP TABLE IF EXISTS LCSManufacturers CASCADE;
 DROP TABLE IF EXISTS Locations CASCADE;
@@ -128,3 +133,21 @@ ON DELETE CASCADE;
 
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA waclquant TO waclquant_edit;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA waclquant TO waclquant_read;
+
+-- User friendly views
+CREATE VIEW lcs AS
+    SELECT time, location_name AS location, manufacturer_name AS manufacturer, device_name AS device, version_name AS version, measurand_name AS species, measurement AS value 
+    FROM lcsmeasurements
+    INNER JOIN lcsdevices USING(device_id)
+    INNER JOIN lcsmanufacturers using (manufacturer_id)
+    INNER JOIN lcsmeasurementversions USING (version_id)
+    INNER JOIN measurands USING (measurand_id)
+    INNER JOIN lcsdeployments ON (lcsmeasurements.device_id = lcsdeployments.device_id AND lcsmeasurements.time >= lcsdeployments.start_time AND lcsmeasurements.time <= lcsdeployments.end_time)
+    INNER JOIN locations USING (location_id)
+;
+
+CREATE VIEW ref AS
+    SELECT time, location_name AS location, measurand_name AS species, measurement AS value FROM referencemeasurements
+    INNER JOIN locations USING (location_id)
+    INNER JOIN measurands USING (measurand_id)
+;
