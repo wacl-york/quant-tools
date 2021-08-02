@@ -94,6 +94,15 @@ df_clean[, value := ifelse(!is.na(factor), factor * value, value)]
 df_clean[, mean(value, na.rm=T), by="measurand"]
 df_clean[, factor := NULL ]
 
+# For some reason have 2 measurements for NO2, O3, and PM10
+# for Zep311 at 2020-02-26 04:44:00
+# I.e. the backup from pre-calibration is different from the rescrape
+# following calibration
+# For every other measurand (except NO) and device, they are the same
+# I'll remove the 'OOB' version as Zephyr might have wanted to correct an error
+# when they sent the 1st cal product around
+df_clean[ timestamp == as_datetime("2020-02-26 04:44:00") & device == "Zep311" & dataset == "OOB" & measurand %in% c("NO2", "O3", "PM10"), value := NA]
+
 # Only really have Cal_1 for NO, for every other species should be OOB
 df_clean[ measurand != "NO" & dataset == "Cal_1", dataset := "OOB" ]
 
