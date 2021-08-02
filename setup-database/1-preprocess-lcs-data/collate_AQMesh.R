@@ -52,6 +52,7 @@ df_3 %>%
 
 # Can combine into a single dataset
 oob <- rbindlist(list(df_1, df_3))
+oob <- oob[ measurand != "Voltage" ]
 
 ########################
 # First cals (rebased)
@@ -66,6 +67,7 @@ df_clean <- load_data("~/Documents/quant_data/Clean/",
                       resample="1 minute",
                       subset=NULL) %>% 
                         pivot_longer(-c(timestamp, manufacturer, device), names_to="measurand") %>%
+                        filter(measurand != "Voltage") %>%
                         arrange(timestamp, device) %>%
                      setDT()
 summary(df_clean$timestamp)
@@ -78,6 +80,7 @@ df_9 <- load_data(sprintf("%s/9-AQMesh/Clean",
                            resample="1 minute",
                            subset=NULL) %>% 
                         pivot_longer(-c(timestamp, manufacturer, device), names_to="measurand") %>%
+                        filter(measurand != "Voltage") %>%
                         arrange(timestamp, device) %>%
                         setDT()
 # We have the cals prior to rebasing up until 2021-02-24, which is what I had expected
@@ -94,28 +97,34 @@ df_clean <- df_clean[ device != "AQM801" ]
 df_clean <- df_clean %>%
                 select(timestamp, manufacturer, device, dataset, measurand, value)
 
+# Second cal product is identified as being from March 30th onwards
+df_clean[ timestamp >= as_datetime("2021-03-30"), dataset := "Cals_2" ]
+
+# Remove explicitly missing values
+df_clean <- df_clean[!is.na(value)]
+
 # Save!
 write_csv(df_clean, "Data/AQMesh.csv")
 
-df_clean[ measurand %in% c("NO", "O3", "PM2.5", "PM10") ] %>%
-    mutate(timestamp = floor_date(timestamp, "1 day")) %>%
-    group_by(timestamp, device, measurand, dataset) %>%
-    summarise(value = mean(value, na.rm=T)) %>%
-    ggplot(aes(x=timestamp, y=value, colour=dataset)) +
-        geom_line() +
-        facet_grid(cols=vars(device), rows=vars(measurand), scales="free") +
-        theme_bw() +
-        theme(legend.position="bottom") +
-        labs(x="", y="Gas (ppb) / PM (ug/m3)", title="AQMesh 3 datasets (24 hour average)")
-
-df_clean[ measurand %in% c("PM2.5", "PM10") & timestamp < as_datetime("2020-06-04") & value < 100 ] %>%
-    mutate(timestamp = floor_date(timestamp, "1 day")) %>%
-    group_by(timestamp, device, measurand, dataset) %>%
-    summarise(value = mean(value, na.rm=T)) %>%
-    ggplot(aes(x=timestamp, y=value, colour=dataset)) +
-        geom_line() +
-        facet_grid(cols=vars(device), rows=vars(measurand), scales="free") +
-        theme_bw() +
-        theme(legend.position="bottom") +
-        labs(x="", y="PM (ug/m3)", title="AQMesh PM 3 datasets (24 hour average)")
+#df_clean[ measurand %in% c("NO", "O3", "PM2.5", "PM10") ] %>%
+#    mutate(timestamp = floor_date(timestamp, "1 day")) %>%
+#    group_by(timestamp, device, measurand, dataset) %>%
+#    summarise(value = mean(value, na.rm=T)) %>%
+#    ggplot(aes(x=timestamp, y=value, colour=dataset)) +
+#        geom_line() +
+#        facet_grid(cols=vars(device), rows=vars(measurand), scales="free") +
+#        theme_bw() +
+#        theme(legend.position="bottom") +
+#        labs(x="", y="Gas (ppb) / PM (ug/m3)", title="AQMesh 3 datasets (24 hour average)")
+#
+#df_clean[ measurand %in% c("PM2.5", "PM10") & timestamp < as_datetime("2020-06-04") & value < 100 ] %>%
+#    mutate(timestamp = floor_date(timestamp, "1 day")) %>%
+#    group_by(timestamp, device, measurand, dataset) %>%
+#    summarise(value = mean(value, na.rm=T)) %>%
+#    ggplot(aes(x=timestamp, y=value, colour=dataset)) +
+#        geom_line() +
+#        facet_grid(cols=vars(device), rows=vars(measurand), scales="free") +
+#        theme_bw() +
+#        theme(legend.position="bottom") +
+#        labs(x="", y="PM (ug/m3)", title="AQMesh PM 3 datasets (24 hour average)")
     
