@@ -59,4 +59,5 @@ df_clean %>%
 # Save!
 df_clean[, dataset := "OOB" ]
 setcolorder(df_clean, c("timestamp", "manufacturer", "device", "dataset", "measurand", "value"))
-write_csv(df_clean, "Data/PurpleAir_OOB.csv")
+df_clean <- df_clean[ !is.na(value) ]
+write_csv(df_clean, "Data/PurpleAir.csv")
