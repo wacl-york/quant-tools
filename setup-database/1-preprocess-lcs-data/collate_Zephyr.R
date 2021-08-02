@@ -94,6 +94,18 @@ df_clean[, value := ifelse(!is.na(factor), factor * value, value)]
 df_clean[, mean(value, na.rm=T), by="measurand"]
 df_clean[, factor := NULL ]
 
+# Only really have Cal_1 for NO, for every other species should be OOB
+df_clean[ measurand != "NO" & dataset == "Cal_1", dataset := "OOB" ]
+
+# We don't have first cals going back beyond the first reference period of 2020-02-18
+df_clean[ timestamp < as_datetime("2020-02-18") & dataset == "Cal_1", value := NA ]
+
+# Don't want to include explicit NAs, missingness will be handled implicitly
+df_clean <- df_clean[ !is.na(value) ]
+
+# Remove duplicate values
+df_clean <- df_clean[ !duplicated(df_clean) ]
+
 setcolorder(df_clean, c("timestamp", "manufacturer", "device", "dataset", "measurand", "value"))
 
 # Save!
