@@ -105,6 +105,9 @@ rm(list=c("df_1", "df_5"))
 df_4[, dataset := "OOB" ]
 setcolorder(df_4, c("timestamp", "manufacturer", "device", "dataset", "measurand", "value"))
 
+# Will assume missigness implicitly by absence of measurement
+df_4 <- df_4[ !is.na(value)]
+
 # Save!
 write_csv(df_4, "Data/QuantAQ_OOB.csv")
 
@@ -172,6 +175,7 @@ df_11[, dataset := "Cal_1" ]
 setcolorder(df_11, c("timestamp", "manufacturer", "device", "dataset", "measurand", "value"))
 
 # Save!
+df_11 <- df_11[ !is.na(value)]
 write_csv(df_11, "Data/QuantAQ_Cal1.csv")
 
 ##############################
@@ -194,6 +198,7 @@ df_clean[, dataset := "Cal_2" ]
 setcolorder(df_clean, c("timestamp", "manufacturer", "device", "dataset", "measurand", "value"))
 
 # Save!
+df_clean <- df_clean[ !is.na(value)]
 write_csv(df_clean, "Data/QuantAQ_Cal2.csv")
 
 ##################################
