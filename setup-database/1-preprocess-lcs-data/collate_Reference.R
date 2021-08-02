@@ -108,5 +108,8 @@ dt_ref_long <- dt_ref_long[, list("reference" = mean(reference, na.rm=T)), by=c(
 # Restrict to study period
 dt_ref_long <- dt_ref_long[ timestamp >= as_datetime("2019-12-10") & timestamp < as_datetime("2021-07-01")]
 
+# Remove missing
+dt_ref_long <- dt_ref_long[ !is.na(reference) ]
+
 fwrite(dt_ref_long, "Data/Reference.csv")
 
