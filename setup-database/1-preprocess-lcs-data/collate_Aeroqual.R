@@ -37,14 +37,6 @@ oob_10_archive <- load_data(sprintf("%s/10-Aeroqual/Clean",
                         pivot_longer(-c(timestamp, manufacturer, device), names_to="measurand") %>%
                         arrange(timestamp, device)
 
-oob_6 <- load_data(sprintf("%s/6-Aeroqual/clean",
-                                   INPUT_DIR),
-                           companies="Aeroqual",
-                           start="2019-12-10",
-                           end="2020-02-17",
-                           resample="1 minute",
-                           subset=NULL) %>% arrange(timestamp, device)
-
 # Are they equal amongst the time period up to 15th April, when the first archive runs out?
 # Nope, different number of rows.
 all_equal(oob_1_archive %>% filter(as_date(timestamp) <= as_date("2020-04-15")), 
@@ -96,7 +88,7 @@ df_12_raw <- df_12_raw %>%
     pivot_longer(-Timestamp, names_pattern="(.+)_(.+)", names_to=c("measurand", "device")) %>%
     rename(timestamp=Timestamp)
 # Have data from 2019-12-10 to 2020-04-23
-summary(df_12_raw$Timestamp)
+summary(df_12_raw$timestamp)
 
 # Are we missing any data?
 # Yes, every piece of AQY872, nearly all AQY873A, barely any AQY874, and a quarter of 875
@@ -110,8 +102,8 @@ df_12_raw %>%
 #   1) The uncalibrated values are the same, providing even more confidence in our out-of-box data (row 17, 18.6==18.6)
 #   2) The calibrated values are definitely different (row 17 18.6 != row 21 14.7)
 df_12_raw %>%
-    filter(Timestamp == as_datetime("2020-01-10 05:40:00")) %>%
-    left_join(oob %>% select(-manufacturer, -dataset), by=c("Timestamp"="timestamp", "measurand", "device"), suffix=c("_manualcals", "_oob")) %>%
+    filter(timestamp == as_datetime("2020-01-10 05:40:00")) %>%
+    left_join(oob %>% select(-manufacturer, -dataset), by=c("timestamp", "measurand", "device"), suffix=c("_manualcals", "_oob")) %>%
     arrange(device, measurand) %>%
     print(n=Inf)
 
@@ -119,7 +111,7 @@ df_12_raw %>%
 # and now suddenly it's missing
 foo <- df_12_raw %>%
     filter(!grepl("Cal", device)) %>%
-    left_join(oob %>% select(-manufacturer, -dataset), by=c("Timestamp"="timestamp", "measurand", "device"), suffix=c("_manualcals", "_oob")) %>%
+    left_join(oob %>% select(-manufacturer, -dataset), by=c("timestamp", "measurand", "device"), suffix=c("_manualcals", "_oob")) %>%
     arrange(device, measurand)
 foo %>% 
     filter(is.na(value_manualcals), !is.na(value_oob)) %>% 
@@ -332,5 +324,9 @@ df_clean <- df_clean %>%
                           value)
            ) %>%
     select(timestamp, manufacturer, device, dataset, measurand, value)
+
+# Remove explicit NAs again
+df_clean <- df_clean %>%
+                filter(!is.na(value))
 
 write_csv(df_clean, "Data/Aeroqual.csv")
