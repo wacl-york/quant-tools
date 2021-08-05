@@ -117,7 +117,7 @@ CREATE TABLE LCSMeasurementVersions(
 
 -- User friendly views
 CREATE VIEW lcs AS
-    SELECT datetime(time, 'unixepoch') as timestamp, location_name AS location, manufacturer_name AS manufacturer, device_name AS device, version_name AS version, measurand_name AS species, measurement AS value 
+    SELECT time, location_name AS location, manufacturer_name AS manufacturer, device_name AS device, version_name AS version, measurand_name AS species, measurement AS value 
     FROM lcsmeasurements
     INNER JOIN lcsdevices USING(device_id)
     INNER JOIN lcsmanufacturers using (manufacturer_id)
@@ -129,7 +129,7 @@ CREATE VIEW lcs AS
 
 
 CREATE VIEW ref AS
-    SELECT datetime(time, 'unixepoch') as timestamp, location_name AS location, measurand_name AS species, measurement AS value FROM referencemeasurements
+    SELECT time, location_name AS location, measurand_name AS species, measurement AS value FROM referencemeasurements
     INNER JOIN locations USING (location_id)
     INNER JOIN measurands USING (measurand_id)
 ;
