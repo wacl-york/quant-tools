@@ -268,7 +268,7 @@ versions_dt <- tbl(con, "lcsmeasurementversions") %>%
                 collect() %>%
                 setDT()
 for (fn in lcs_fns) {
-    cat(sprintf("Inserting data from file %s...\n", fn))
+    cat(sprintf("Processing data from file %s...\n", fn))
     dt <- fread(fn) 
     dt <- dt[ !is.na(value)]
     dt[ dataset == "OOB", dataset := "out-of-box"]

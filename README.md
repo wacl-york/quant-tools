@@ -170,9 +170,9 @@ The database can be recreated using the files contained in the live `QUANT/Data/
 
   1. Download the Clean and One off download folders and make them available locally
   2. Run each of the `collate_<company>.R` scripts in `setup-database/1-preprocess-lcs-data`. These scripts collate and clean the multiple datasets per company into a single CSV per company
-  3. Run `setup-database/2-populate-db/1_create_schema.sql` to create the database relations
+  3. Run `setup-database/2-populate-db/1_create_schema.sql` from within the database to create the schema
   4. Run `setup-database/2-populate-db/2_populate_database.R` to populate many of the smaller lookup tables
-  5. Run `setup-database/2-populate-db/3_populate_measurements.sql` to populate the largest tables containing the LCS and reference measurements
+  5. Run `setup-database/2-populate-db/3_populate_measurements.sql` from within the database to populate the largest tables containing the LCS and reference measurements
 
 The reason that loading the database is split between steps 4 and 5 is because I had initially preferred to do it from R, as I can munge data far more quickly in R than sql. 
 However, the R ODBC interface is extremely slow and also had problems running out of memory when trying to load the millions of measurement rows.
