@@ -173,6 +173,7 @@ The database can be recreated using the files contained in the live `QUANT/Data/
   3. Run `setup-database/2-populate-db/1_create_schema.sql` from within the database to create the schema
   4. Run `setup-database/2-populate-db/2_populate_database.R` to populate many of the smaller lookup tables
   5. Run `setup-database/2-populate-db/3_populate_measurements.sql` from within the database to populate the largest tables containing the LCS and reference measurements
+  6. Run `setup-database/2-populate-db/4_create_indexes.sql` from within the database to create indexes to speed up queries. These could be created in `1_create_schema.sql` but that would substantially slow down the data insertion step.
 
 The reason that loading the database is split between steps 4 and 5 is because I had initially preferred to do it from R, as I can munge data far more quickly in R than sql. 
 However, the R ODBC interface is extremely slow and also had problems running out of memory when trying to load the millions of measurement rows.
