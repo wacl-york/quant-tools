@@ -23,7 +23,7 @@ DROP VIEW IF EXISTS lcs;
 DROP VIEW IF EXISTS ref;
 
 CREATE TABLE LCSDevices(
-    device_id INTEGER PRIMARY KEY,
+    device_id SERIAL PRIMARY KEY,
     device_name TEXT,
     manufacturer_id smallint,
     CONSTRAINT fk_lcsdevices_lcsmanufacturers
@@ -33,17 +33,17 @@ CREATE TABLE LCSDevices(
 );
 
 CREATE TABLE LCSManufacturers(
-    manufacturer_id INTEGER PRIMARY KEY,
+    manufacturer_id SERIAL PRIMARY KEY,
     manufacturer_name TEXT
 );
 
 CREATE TABLE Locations(
-    location_id INTEGER PRIMARY KEY,
+    location_id SERIAL PRIMARY KEY,
     location_name TEXT
 );
 
 CREATE TABLE Measurands(
-    measurand_id INTEGER PRIMARY KEY,
+    measurand_id SERIAL PRIMARY KEY,
     measurand_name TEXT
 );
 
@@ -85,7 +85,7 @@ CREATE TABLE LCSMeasurements(
 );
 
 CREATE TABLE ReferenceDevices(
-    reference_device_id INTEGER PRIMARY KEY,
+    reference_device_id SERIAL PRIMARY KEY,
     name TEXT
 );
 
@@ -111,7 +111,7 @@ CREATE TABLE ReferenceMeasurements(
 );
 
 CREATE TABLE LCSMeasurementVersions(
-    version_id INTEGER PRIMARY KEY,
+    version_id SERIAL PRIMARY KEY,
     version_name TEXT
 );
 
