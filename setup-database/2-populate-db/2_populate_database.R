@@ -23,6 +23,7 @@
 
 library(DBI)
 library(odbc)
+library(RSQLite)
 library(tidyverse)
 library(data.table)
 library(lubridate)
@@ -86,27 +87,27 @@ yesterday <- as.character(today() - days(1))
 deployments_to_insert <- bind_rows(
     list(
         data.frame(
-            device=c("Zep188", "Zep309", "Zep344", "Zep716"),
-            start="2019-12-10",
-            end="2020-03-04",
-            location="Manchester"
-        ),
-        data.frame(
             device=c("Zep188", "Zep344"),
-            start="2020-03-05",
+            start="2019-12-10",
             end=yesterday,
             location="Manchester"
         ),
         data.frame(
-            device="Zep311",
+            device=c("Zep311", "Zep716"),
+            start="2019-12-10",
+            end="2020-03-05",
+            location="Manchester"
+        ),
+        data.frame(
+            device=c("Zep311", "Zep716"),
             start="2020-03-11",
             end=yesterday,
             location="London"
         ),
         data.frame(
             device="Zep309",
-            start="2020-03-05",
-            end="2020-03-15",
+            start="2012-12-10",
+            end="2020-03-17",
             location="Manchester"
         ),
         data.frame(
@@ -116,15 +117,15 @@ deployments_to_insert <- bind_rows(
             location="York"
         ),
         data.frame(
-            device=c("PA1", "PA2", "PA3", "PA4"),
+            device=c("PA1", "PA3"),
             start="2019-12-10",
-            end="2020-03-04",
+            end=yesterday,
             location="Manchester"
         ),
         data.frame(
-            device=c("PA5", "PA6", "PA7", "PA8", "PA9", "PA10"),
-            start="2020-01-22",
-            end="2020-03-04",
+            device=c("PA2", "PA4"),
+            start="2019-12-10",
+            end="2020-03-05",
             location="Manchester"
         ),
         data.frame(
@@ -134,15 +135,21 @@ deployments_to_insert <- bind_rows(
             location="London"
         ),
         data.frame(
-            device=c("PA1", "PA3", "PA5", "PA6"),
-            start="2020-03-05",
+            device=c("PA5", "PA6"),
+            start="2020-01-22",
             end=yesterday,
             location="Manchester"
         ),
         data.frame(
+            device=c("PA9"),
+            start="2020-01-22",
+            end="2020-03-05",
+            location="Manchester"
+        ),
+        data.frame(
             device=c("PA7", "PA8", "PA10"),
-            start="2020-03-05",
-            end="2020-03-15",
+            start="2020-01-22",
+            end="2020-03-17",
             location="Manchester"
         ),
         data.frame(
@@ -152,9 +159,15 @@ deployments_to_insert <- bind_rows(
             location="York"
         ),
         data.frame(
-            device=c("Ari063", "Ari078", "Ari086", "Ari093"),
+            device=c("Ari063", "Ari078"),
             start="2019-12-10",
-            end="2020-03-04",
+            end=yesterday,
+            location="Manchester"
+        ),
+        data.frame(
+            device=c("Ari086"),
+            start="2019-12-10",
+            end="2020-03-05",
             location="Manchester"
         ),
         data.frame(
@@ -164,15 +177,27 @@ deployments_to_insert <- bind_rows(
             location="London"
         ),
         data.frame(
-            device=c("Ari063", "Ari078"),
-            start="2020-03-05",
+            device=c("Ari093"),
+            start="2019-12-10",
+            end="2020-03-17",
+            location="Manchester"
+        ),
+        data.frame(
+            device="Ari093",
+            start="2020-03-23",
+            end=yesterday,
+            location="York"
+        ),
+        data.frame(
+            device=c("AQM388", "AQM390"),
+            start="2019-12-10",
             end=yesterday,
             location="Manchester"
         ),
         data.frame(
-            device=c("AQM388", "AQM389", "AQM390", "AQM391"),
+            device=c("AQM389"),
             start="2019-12-10",
-            end="2020-03-04",
+            end="2020-03-05",
             location="Manchester"
         ),
         data.frame(
@@ -182,9 +207,9 @@ deployments_to_insert <- bind_rows(
             location="London"
         ),
         data.frame(
-            device="AQM391",
-            start="2020-03-05",
-            end="2020-03-16",
+            device=c("AQM391"),
+            start="2019-12-10",
+            end="2020-03-17",
             location="Manchester"
         ),
         data.frame(
@@ -194,15 +219,15 @@ deployments_to_insert <- bind_rows(
             location="York"
         ),
         data.frame(
-            device=c("AQM388", "AQM390"),
-            start="2020-03-05",
+            device=c("AQY872", "AQY873A"),
+            start="2019-12-10",
             end=yesterday,
             location="Manchester"
         ),
         data.frame(
-            device=c("AQY872", "AQY873A", "AQY874", "AQY875A2"),
+            device=c("AQY874"),
             start="2019-12-10",
-            end="2020-03-04",
+            end="2020-03-05",
             location="Manchester"
         ),
         data.frame(
@@ -212,22 +237,16 @@ deployments_to_insert <- bind_rows(
             location="London"
         ),
         data.frame(
-            device="AQY875A2",
-            start="2020-03-05",
-            end="2020-03-16",
+            device=c("AQY875", "AQY875A2"),
+            start="2019-12-10",
+            end="2020-03-17",
             location="Manchester"
         ),
         data.frame(
-            device="AQY875A2",
+            device=c("AQY875", "AQY875A2"),
             start="2020-03-23",
             end=yesterday,
             location="York"
-        ),
-        data.frame(
-            device=c("AQY872", "AQY873A"),
-            start="2020-03-05",
-            end=yesterday,
-            location="Manchester"
         )
     )
 ) %>%
@@ -268,7 +287,7 @@ versions_dt <- tbl(con, "lcsmeasurementversions") %>%
                 collect() %>%
                 setDT()
 for (fn in lcs_fns) {
-    cat(sprintf("Processing data from file %s...\n", fn))
+    cat(sprintf("Inserting data from file %s...\n", fn))
     dt <- fread(fn) 
     dt <- dt[ !is.na(value)]
     dt[ dataset == "OOB", dataset := "out-of-box"]
@@ -300,6 +319,7 @@ for (fn in lcs_fns) {
     
     # Save data to upload via psql
     fwrite(dt, gsub(".csv", "_to_insert.csv", fn))
+    #dbAppendTable(con, "lcsmeasurements", dt)
 }
 
 ############ ReferenceDevices
@@ -327,3 +347,4 @@ ref_to_insert <- ref_dt %>%
     select(time=timestamp, location_id, reference_device_id, measurand_id, measurement=reference)
 
 fwrite(ref_to_insert, "Data/Reference_to_insert.csv")
+#dbAppendTable(con, "referencemeasurements", ref_to_insert)
