@@ -10,26 +10,22 @@
 -- Its installation isn't included in this script
 -- as we do not have SU access to ITS hosted DBs
 
-DROP TABLE IF EXISTS LCSDevices;
-DROP TABLE IF EXISTS LCSManufacturers;
-DROP TABLE IF EXISTS Locations;
-DROP TABLE IF EXISTS Measurands;
-DROP TABLE IF EXISTS LCSDeployments;
-DROP TABLE IF EXISTS LCSMeasurements;
-DROP TABLE IF EXISTS ReferenceDevices;
-DROP TABLE IF EXISTS ReferenceMeasurements;
-DROP TABLE IF EXISTS LCSMeasurementVersions;
+DROP TABLE IF EXISTS LCSDevices CASCADE;
+DROP TABLE IF EXISTS LCSManufacturers CASCADE;
+DROP TABLE IF EXISTS Locations CASCADE;
+DROP TABLE IF EXISTS Measurands CASCADE;
+DROP TABLE IF EXISTS LCSDeployments CASCADE;
+DROP TABLE IF EXISTS LCSMeasurements CASCADE;
+DROP TABLE IF EXISTS ReferenceDevices CASCADE;
+DROP TABLE IF EXISTS ReferenceMeasurements CASCADE;
+DROP TABLE IF EXISTS LCSMeasurementVersions CASCADE;
 DROP VIEW IF EXISTS lcs;
 DROP VIEW IF EXISTS ref;
 
 CREATE TABLE LCSDevices(
     device_id SERIAL PRIMARY KEY,
     device_name TEXT,
-    manufacturer_id smallint,
-    CONSTRAINT fk_lcsdevices_lcsmanufacturers
-        FOREIGN KEY(manufacturer_id) 
-        REFERENCES LCSManufacturers(manufacturer_id)
-        ON DELETE CASCADE
+    manufacturer_id smallint
 );
 
 CREATE TABLE LCSManufacturers(
@@ -52,15 +48,7 @@ CREATE TABLE LCSDeployments(
     location_id smallint,
     start_time TIMESTAMP,
     end_time TIMESTAMP,
-    PRIMARY KEY (device_id, location_id, start_time),
-    CONSTRAINT fk_lcsdeployments_lcsdevices
-        FOREIGN KEY(device_id) 
-        REFERENCES LCSDevices(device_id)
-        ON DELETE CASCADE,
-    CONSTRAINT fk_lcsdeployments_locations
-        FOREIGN KEY(location_id) 
-        REFERENCES Locations(location_id)
-        ON DELETE CASCADE
+    PRIMARY KEY (device_id, location_id, start_time)
 );
 
 CREATE TABLE LCSMeasurements(
@@ -69,19 +57,7 @@ CREATE TABLE LCSMeasurements(
     version_id smallint,
     measurand_id smallint,
     measurement REAL,
-    PRIMARY KEY (time, device_id, measurand_id, version_id),
-    CONSTRAINT fk_lcsmeasurements_lcsdevices
-        FOREIGN KEY(device_id) 
-        REFERENCES LCSDevices(device_id)
-        ON DELETE CASCADE,
-    CONSTRAINT fk_lcsmeasurements_lcsmeasurementversions
-        FOREIGN KEY(version_id) 
-        REFERENCES LCSMeasurementVersions(version_id)
-        ON DELETE CASCADE,
-    CONSTRAINT fk_lcsmeasurements_measurands
-        FOREIGN KEY(measurand_id) 
-        REFERENCES Measurands(measurand_id)
-        ON DELETE CASCADE
+    PRIMARY KEY (time, device_id, measurand_id, version_id)
 );
 
 CREATE TABLE ReferenceDevices(
@@ -95,25 +71,67 @@ CREATE TABLE ReferenceMeasurements(
     reference_device_id smallint,
     measurand_id smallint,
     measurement REAL,
-    PRIMARY KEY (time, reference_device_id, location_id, measurand_id),
-    CONSTRAINT fk_referencemeasurements_referencedevices
-        FOREIGN KEY(reference_device_id) 
-        REFERENCES ReferenceDevices(reference_device_id)
-        ON DELETE CASCADE,
-    CONSTRAINT fk_referencemeasurements_locations
-        FOREIGN KEY(location_id) 
-        REFERENCES Locations(location_id)
-        ON DELETE CASCADE,
-    CONSTRAINT fk_referencemeasurements_measurands
-        FOREIGN KEY(measurand_id) 
-        REFERENCES Measurands(measurand_id)
-        ON DELETE CASCADE
+    PRIMARY KEY (time, reference_device_id, location_id, measurand_id)
 );
 
 CREATE TABLE LCSMeasurementVersions(
     version_id SERIAL PRIMARY KEY,
     version_name TEXT
 );
+
+ALTER TABLE LCSDevices
+ADD CONSTRAINT fk_lcsdevices_lcsmanufacturers
+    FOREIGN KEY(manufacturer_id) 
+    REFERENCES LCSManufacturers(manufacturer_id)
+    ON DELETE CASCADE;
+
+ALTER TABLE LCSDeployments
+ADD CONSTRAINT fk_lcsdeployments_lcsdevices
+    FOREIGN KEY(device_id) 
+    REFERENCES LCSDevices(device_id)
+    ON DELETE CASCADE;
+
+ALTER TABLE LCSDeployments
+ADD CONSTRAINT fk_lcsdeployments_locations
+    FOREIGN KEY(location_id) 
+    REFERENCES Locations(location_id)
+    ON DELETE CASCADE;
+
+ALTER TABLE LCSMeasurements
+ADD CONSTRAINT fk_lcsmeasurements_lcsdevices
+    FOREIGN KEY(device_id) 
+    REFERENCES LCSDevices(device_id)
+    ON DELETE CASCADE;
+
+ALTER TABLE LCSMeasurements
+ADD CONSTRAINT fk_lcsmeasurements_lcsmeasurementversions
+    FOREIGN KEY(version_id) 
+    REFERENCES LCSMeasurementVersions(version_id)
+    ON DELETE CASCADE;
+
+ALTER TABLE LCSMeasurements
+ADD CONSTRAINT fk_lcsmeasurements_measurands
+    FOREIGN KEY(measurand_id) 
+    REFERENCES Measurands(measurand_id)
+    ON DELETE CASCADE;
+
+ALTER TABLE ReferenceMeasurements
+ADD CONSTRAINT fk_referencemeasurements_referencedevices
+    FOREIGN KEY(reference_device_id) 
+    REFERENCES ReferenceDevices(reference_device_id)
+    ON DELETE CASCADE;
+
+ALTER TABLE ReferenceMeasurements
+ADD CONSTRAINT fk_referencemeasurements_locations
+    FOREIGN KEY(location_id) 
+    REFERENCES Locations(location_id)
+    ON DELETE CASCADE;
+
+ALTER TABLE ReferenceMeasurements
+ADD CONSTRAINT fk_referencemeasurements_measurands
+    FOREIGN KEY(measurand_id) 
+    REFERENCES Measurands(measurand_id)
+    ON DELETE CASCADE;
 
 -- User friendly views
 CREATE VIEW lcs AS
