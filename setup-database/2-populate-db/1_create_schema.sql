@@ -151,3 +151,6 @@ CREATE VIEW ref AS
     INNER JOIN locations USING (location_id)
     INNER JOIN measurands USING (measurand_id)
 ;
+
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA waclquant TO waclquant_edit;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA waclquant TO waclquant_read;
