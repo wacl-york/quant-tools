@@ -24,7 +24,7 @@ print(df)
 df_2 = pd.read_sql("SELECT timestamp, device, version, NO2, O3 FROM lcs LIMIT 100", conn)
 print(df_2)
 
-# You can filter the rows by time, device, and the dataset version by using the
+# You can filter the rows by time, device, location, and the dataset version by using the
 # WHERE clause
 # The following query obtains PM2.5 from PA3, PA3_b, PA4 between March and April
 # 2020
@@ -34,6 +34,7 @@ print(df_3)
 
 # There are 3 possible values for the version column: 'out-of-box', 'cal1',
 # 'cal2'.
+# The possible locations are: 'Manchester', 'Birmingham', 'York', and 'London'
 # This query finds all O3 and NO2 from AQY874 in March 2020 and orders the results
 # firstly in time, and then secondly by version.
 # This allows us to see that we have both out-of-box and cal1 values for this
@@ -41,10 +42,14 @@ print(df_3)
 df_4 = pd.read_sql("SELECT timestamp, device, version, O3, NO2 FROM lcs WHERE device = 'AQY874' AND timestamp BETWEEN '2020-03-01' AND '2020-03-02' ORDER BY timestamp, version ASC LIMIT 100", conn)
 print(df_4)
 
+# The LIKE operator is useful for finding strings that match a pattern.
+# The query below finds all Aeroqual devices as they start with AQY.
+# The '%' sign means 'any number of additional characters'
+pd.read_sql("SELECT timestamp, device, version, O3, NO2 FROM lcs WHERE device LIKE 'AQY%' LIMIT 100", conn)
+
 ##### Accessing reference data
 # The reference data is organised similarly in a table called 'ref'.
 # Each row corresponds to a given timestamp and location
-# The possible locations are: 'Manchester', 'Birmingham', 'York', and 'London'
 df_ref = pd.read_sql("SELECT * FROM ref LIMIT 100", conn)
 print(df_ref)
 
