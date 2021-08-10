@@ -11,7 +11,7 @@ library(tidyverse)
 library(data.table)
 library(lubridate)
 
-con <- dbConnect(SQLite(), "sqlite-db/quant2.db")
+con <- dbConnect(SQLite(), "quant.db")
 
 # Load all saved data
 lcs_fns <- paste0("Data/",
@@ -33,8 +33,7 @@ MEASUREMENT_COLS <- c(
     "PM2.5",
     "PM10",
     "Temperature",
-    "RelHumidity",
-    "AirPressure"
+    "RelHumidity"
 )
 
 ############ Device deployment history
@@ -220,7 +219,7 @@ pa_b_deployments <- deployments_to_insert %>%
 deployments_to_insert <- rbind(deployments_to_insert, pa_b_deployments) %>%
                             select(device, location, start, end)
 
-dbAppendTable(con, "lcsdeployments", deployments_to_insert)
+dbAppendTable(con, "deployments_raw", deployments_to_insert)
 
 ############ LCS measurements
 for (fn in lcs_fns) {
@@ -256,10 +255,14 @@ for (fn in lcs_fns) {
     }
     
     setcolorder(dt_wide, c("timestamp", "device", "version", MEASUREMENT_COLS))
-    setnames(dt_wide, old=c("PM2.5"), new=c("PM25"))
+    setnames(dt_wide, old=MEASUREMENT_COLS, new=gsub("\\.", "", MEASUREMENT_COLS))
     
     # Insert into DB
     dbAppendTable(con, "lcs_raw", dt_wide)
+
+    # Find which devices have which sensors and insert into DB
+    sensor_availability <- dt_wide[, lapply(.SD, function(x) as.integer(any(!is.na(x)))), .SDcols=gsub("\\.", "", MEASUREMENT_COLS), by=c("device", "version") ][ order(device, version)]
+    dbAppendTable(con, "devices_versions_sensors", sensor_availability)
 }
 
 
@@ -276,6 +279,6 @@ for (col in cols_to_add) {
 }
 
 setcolorder(ref_wide, c("timestamp", "location", MEASUREMENT_COLS))
-setnames(ref_wide, old=c("PM2.5"), new=c("PM25"))
+setnames(ref_wide, old=MEASUREMENT_COLS, new=gsub("\\.", "", MEASUREMENT_COLS))
 
 dbAppendTable(con, "ref_raw", ref_wide)
