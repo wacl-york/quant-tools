@@ -217,7 +217,8 @@ pa_b_deployments <- deployments_to_insert %>%
     mutate(device= sprintf("%s_b", device))
 
 deployments_to_insert <- rbind(deployments_to_insert, pa_b_deployments) %>%
-                            select(device, location, start, end)
+                            select(device, location, start, end) %>%
+                            setDT()
 
 dbAppendTable(con, "deployments_raw", deployments_to_insert)
 
@@ -254,7 +255,14 @@ for (fn in lcs_fns) {
         dt_wide[ , (col) := NA ]
     }
     
-    setcolorder(dt_wide, c("timestamp", "device", "version", MEASUREMENT_COLS))
+    # Add deployments
+    dt_wide <- dt_wide %>%
+        inner_join(deployments_to_insert, by="device") %>%
+        filter(timestamp >= start, timestamp <= end) %>%
+        select(-start, -end) %>%
+        setDT()
+
+    setcolorder(dt_wide, c("timestamp", "device", "location", "version", MEASUREMENT_COLS))
     setnames(dt_wide, old=MEASUREMENT_COLS, new=gsub("\\.", "", MEASUREMENT_COLS))
     
     # Insert into DB

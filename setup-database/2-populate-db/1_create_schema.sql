@@ -17,6 +17,7 @@ DROP VIEW IF EXISTS devices_sensors;
 CREATE TABLE lcs_raw(
     timestamp INTEGER,
     device TEXT,
+    location TEXT,
     version TEXT,
     O3 REAL,
     NO2 REAL,
@@ -77,6 +78,7 @@ AS
 SELECT
     datetime(timestamp, 'unixepoch') as timestamp,
     device,
+    location,
     version,
     O3,
     NO2,

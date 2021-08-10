@@ -155,6 +155,8 @@ There is also an R version of `load_data`, found in `load_data.R`, with example 
 The database uses SQLite, which means that you need to download it as a file onto your local computer from Google Drive (it is 5GB in size).
 No new Python dependencies are required.
 
+To access the data using Python, see the example code in `example_db.py` for pointers.
+
 # Setting up the database
 
 NB: This section details how to recreate the frozen database from the CSV files stored on Google Drive.
