@@ -152,29 +152,25 @@ There is also an R version of `load_data`, found in `load_data.R`, with example 
 
 # Reading data from the database
 
-**NB: the database can only be accessed while on the university network**.
-If you are not on campus then you must use the VPN as detailed here [https://www.york.ac.uk/it-services/services/vpn/](https://www.york.ac.uk/it-services/services/vpn/).
-
-Firstly, install the `sqlalchemy` and `psycopg2` packages.
-
-Connecting to the database is fairly straightforward, see the examples in `example_db.py` for guidance.
-You will need certain credentials that should have been made available to you.
+The database uses SQLite, which means that you need to download it as a file onto your local computer from Google Drive (it is 5GB in size).
+No new Python dependencies are required.
 
 # Setting up the database
 
+NB: This section details how to recreate the frozen database from the CSV files stored on Google Drive.
+
 The database was created in July 2021 using data from 2019-12-10 to 2021-06-30 from the 5 companies in the main study, from devices situated at Manchester, York, Birmingham and London.
 The database also contains reference measurements for these sites.
-The schema is shown in an entity-relationship diagram in `setup-database/schema-design`.
+
+The schema comprises 2 straight forward wide tables for the measurements (`lcs_raw` and `ref_raw`) and one long table detailing the LCS device deployment histories.
+Initially a fully normalised design was employed, but it was found to be slower to query by a factor of 4 than this more naive design.
+
+In addition to these 3 tables are 3 corresponding views that convert datetime fields into human readable datetime objects, rather than the POSIX integers that they are stored as.
 
 The database can be recreated using the files contained in the live `QUANT/Data/Clean` folder, and the various back-ups in `QUANT/Data/One off downloads` using the following steps:
 
   1. Download the Clean and One off download folders and make them available locally
   2. Run each of the `collate_<company>.R` scripts in `setup-database/1-preprocess-lcs-data`. These scripts collate and clean the multiple datasets per company into a single CSV per company
-  3. Run `setup-database/2-populate-db/1_create_schema.sql` from within the database to create the schema
-  4. Run `setup-database/2-populate-db/2_populate_database.R` to populate many of the smaller lookup tables
-  5. Run `setup-database/2-populate-db/3_populate_measurements.sql` from within the database to populate the largest tables containing the LCS and reference measurements
-  6. Run `setup-database/2-populate-db/4_create_indexes.sql` from within the database to create indexes to speed up queries. These could be created in `1_create_schema.sql` but that would substantially slow down the data insertion step.
-
-The reason that loading the database is split between steps 4 and 5 is because I had initially preferred to do it from R, as I can munge data far more quickly in R than sql. 
-However, the R ODBC interface is extremely slow and also had problems running out of memory when trying to load the millions of measurement rows.
-The `\copy` command in `psql` instead is far more efficient, so instead I setup the small tables and save CSVs containing the measurement files ready to be inserted into the DB in step 4, then do the final loading in 5.
+  3. Run `setup-database/2-populate-db/1_create_schema.sql` in an empty SQLite database to create the relations
+  4. Run `setup-database/2-populate-db/2_populate_database.R` to populate the tables
+  6. Run `setup-database/2-populate-db/3_create_indexes.sql` from within the database to create indexes to speed up queries. These could be created in `1_create_schema.sql` but that would substantially slow down the data insertion step.
