@@ -3,7 +3,8 @@ import pandas as pd
 
 ##### Database connection
 # You open a connection in a very similar way to reading a CSV file
-conn = sqlite3.connect("<PATH>/<TO>/quant.db")
+#conn = sqlite3.connect("<PATH>/<TO>/quant.db")
+conn = sqlite3.connect("setup-database/quant.db")
 
 ##### Accessing LCS data
 # The LCS data is accessed through the 'lcs' table
@@ -18,7 +19,6 @@ print(df)
 # We can subset the data to fields we're interested in by specifying
 # them in the SELECT statement
 # So the query below only returns NO2 and O3
-
 # NB: It is always better to only request the columns you want as it will be 
 # quicker and use less memory!
 df_2 = pd.read_sql("SELECT timestamp, device, version, NO2, O3 FROM lcs LIMIT 100", conn)
@@ -39,13 +39,26 @@ print(df_3)
 # firstly in time, and then secondly by version.
 # This allows us to see that we have both out-of-box and cal1 values for this
 # species in this time period
-df_4 = pd.read_sql("SELECT timestamp, device, version, O3, NO2 FROM lcs WHERE device = 'AQY874' AND timestamp BETWEEN '2020-03-01' AND '2020-03-02' ORDER BY timestamp, version ASC LIMIT 100", conn)
+df_4 = pd.read_sql("SELECT timestamp, device, version, O3, NO2 FROM lcs WHERE device = 'AQY874' AND version = 'cal1' AND timestamp BETWEEN '2020-03-01' AND '2020-03-02' ORDER BY timestamp, version ASC LIMIT 100", conn)
 print(df_4)
 
 # The LIKE operator is useful for finding strings that match a pattern.
 # The query below finds all Aeroqual devices as they start with AQY.
 # The '%' sign means 'any number of additional characters'
-pd.read_sql("SELECT timestamp, device, version, O3, NO2 FROM lcs WHERE device LIKE 'AQY%' LIMIT 100", conn)
+df_5 = pd.read_sql("SELECT timestamp, device, version, O3, NO2 FROM lcs WHERE device LIKE 'AQY%' LIMIT 100", conn)
+print(df_5)
+
+##### Last calibration version
+# If you just want the most recent data for a device then use the `lcs_latest`
+# table instead.
+# This pulls the most recent calibration version for each species separately, i.e. if cal2
+# is available for PM2.5 but only Cal1 for O3 and out-of-box for NO2, then the
+# PM25 column will be cal2, O3 column will be cal1 measurements, and NO2 will be
+# out-of-the-box
+# At the end of the guide is an example of viewing which species have which
+# calibration models available in table `devices_versions_sensors`
+df_latest = pd.read_sql("SELECT * FROM lcs_latest LIMIT 100", conn)
+print(df_latest)
 
 ##### Accessing reference data
 # The reference data is organised similarly in a table called 'ref'.
@@ -59,7 +72,7 @@ print(df_ref)
 # Firstly note that you'll need to explicitly set the timestamp as a datetime type, as it is a string by default
 df_4['timestamp'] = pd.to_datetime(df_4['timestamp'])
 # The groupby allows resampling across multiple devices and dataset versions if present
-df_5mins = df_4.set_index("timestamp").groupby(["device", "version"]).resample("5 min", level=0).mean().reset_index()    
+df_5mins = df_4.groupby(["device", "version"]).resample("5 min", on='timestamp').mean().reset_index()
 print(df_5mins)
 
 ###### Meta-data
@@ -85,7 +98,7 @@ pd.read_sql("SELECT * FROM devices_versions WHERE device LIKE 'PA%'", conn)
 pd.read_sql("SELECT * FROM devices_sensors", conn)
 
 ### devices_sensors_versions
-# devices_sensors_versoins details which sensors are in which dataset versions
+# devices_sensors_versions details which sensors are in which dataset versions
 pd.read_sql("SELECT * FROM devices_versions_sensors", conn)
 # So for Zephyr we can see that we only have NO in cal1
 pd.read_sql("SELECT * FROM devices_versions_sensors WHERE device LIKE 'Zep%'", conn)
