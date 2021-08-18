@@ -18,9 +18,7 @@ lcs_fns <- paste0("Data/",
               c("Aeroqual.csv",
                 "AQMesh.csv",
                 "PurpleAir.csv",
-                "QuantAQ_Cal1.csv",
-                "QuantAQ_Cal2.csv",
-                "QuantAQ_OOB.csv",
+                "QuantAQ.csv",
                 "Zephyr.csv"))
 
 MEASUREMENT_COLS <- c(
@@ -222,10 +220,19 @@ deployments_to_insert <- rbind(deployments_to_insert, pa_b_deployments) %>%
 
 dbAppendTable(con, "deployments_raw", deployments_to_insert)
 
+version_order <- data.frame(version=c("out-of-box", "cal1", "cal2"), version_int = 1:3)
+
 ############ LCS measurements
 for (fn in lcs_fns) {
+
     cat(sprintf("Inserting data from file %s...\n", fn))
-    dt <- fread(fn) 
+    # QuantAQ data is split amongst multiple files
+    if (fn == "Data/QuantAQ.csv") {
+        quant_aq_fns <- paste0('Data/QuantAQ_', c('OOB.csv', 'Cal1.csv', 'Cal2.csv'))
+        dt <- rbindlist(lapply(quant_aq_fns, fread))
+    } else {
+        dt <- fread(fn)
+    }
     dt <- dt[ !is.na(value)]
     dt <- dt[ measurand %in% MEASUREMENT_COLS ]
     dt[ dataset == "OOB", dataset := "out-of-box"]
@@ -271,6 +278,44 @@ for (fn in lcs_fns) {
     # Find which devices have which sensors and insert into DB
     sensor_availability <- dt_wide[, lapply(.SD, function(x) as.integer(any(!is.na(x)))), .SDcols=gsub("\\.", "", MEASUREMENT_COLS), by=c("device", "version") ][ order(device, version)]
     dbAppendTable(con, "devices_versions_sensors", sensor_availability)
+
+    ###########################################################################
+    # Create table of just most recent dataset for each device/species
+    # combination
+    ###########################################################################
+    # This gives the highest dataset version for each device/species
+    latest_version <- dt %>%
+        filter(!is.na(value)) %>%
+        group_by(device, version, measurand) %>%
+        slice_head(n=1) %>%
+        select(device, version, measurand) %>%
+        ungroup() %>%
+        left_join(version_order, by="version") %>%
+        group_by(device, measurand) %>%
+        slice_max(version_int, n=1) %>%
+        select(device, measurand, version) %>%
+        setDT()
+
+    # Now form a wide table of just this most recent version
+    dt_wide <- dcast(dt[latest_version, on=c("device", "measurand", "version")], timestamp + device ~ measurand, value.var="value")
+    # Add any measurands that may not have had measurements for
+    cols_to_add <- setdiff(MEASUREMENT_COLS, colnames(dt_wide))
+    for (col in cols_to_add) {
+        dt_wide[ , (col) := NA ]
+    }
+
+    # Add deployments
+    dt_wide <- dt_wide %>%
+        inner_join(deployments_to_insert, by="device") %>%
+        filter(timestamp >= start, timestamp <= end) %>%
+        select(-start, -end) %>%
+        setDT()
+
+    setcolorder(dt_wide, c("timestamp", "device", "location", MEASUREMENT_COLS))
+    setnames(dt_wide, old=MEASUREMENT_COLS, new=gsub("\\.", "", MEASUREMENT_COLS))
+
+    # Insert into DB
+    dbAppendTable(con, "lcs_latest_raw", dt_wide)
 }
 
 
