@@ -228,20 +228,12 @@ for (fn in lcs_fns) {
     dt <- fread(fn) 
     dt <- dt[ !is.na(value)]
     dt <- dt[ measurand %in% MEASUREMENT_COLS ]
+
+    # Rename labels
     dt[ dataset == "OOB", dataset := "out-of-box"]
+    dt[ dataset == "Cal_1", dataset := "cal1"]
+    dt[ dataset == "Cal_2", dataset := "cal2"]
     
-    # Need to do something different for AQMesh as want to use
-    # the rebased data rather than the raw cal 1
-    # Note don't actually have Cal_2 for AQMesh at the time of writing this 
-    # script but might have it later
-    if (fn == "Data/AQMesh.csv") {
-        dt <- dt[ dataset != "Cals_1" ]  # Remove unrebased first cals
-        dt[ dataset == "Cals_1_Rebased", dataset := "cal1"]
-        dt[ dataset == "Cals_2", dataset := "cal2"]
-    } else {
-        dt[ dataset == "Cal_1", dataset := "cal1"]
-        dt[ dataset == "Cal_2", dataset := "cal2"]
-    }
     setnames(dt, 
              old=c("dataset"),
              new=c("version"))
