@@ -283,36 +283,21 @@ for (fn in lcs_fns) {
     # Create table of just most recent dataset for each device/species
     # combination
     ###########################################################################
-    # This gives the highest dataset version for each device/species
-    latest_version <- dt %>%
-        filter(!is.na(value)) %>%
-        group_by(device, version, measurand) %>%
-        slice_head(n=1) %>%
-        select(device, version, measurand) %>%
-        ungroup() %>%
-        left_join(version_order, by="version") %>%
-        group_by(device, measurand) %>%
-        slice_max(version_int, n=1) %>%
-        select(device, measurand, version) %>%
-        setDT()
-
-    # Now form a wide table of just this most recent version
-    dt_wide <- dcast(dt[latest_version, on=c("device", "measurand", "version")], timestamp + device ~ measurand, value.var="value")
-    # Add any measurands that may not have had measurements for
-    cols_to_add <- setdiff(MEASUREMENT_COLS, colnames(dt_wide))
-    for (col in cols_to_add) {
-        dt_wide[ , (col) := NA ]
+    # Convert to wide format with 3 columns for each of 3 datasets and measurand is column identifier
+    dt <- melt(dt_wide, id.vars=c("timestamp", "device", "version", "location"), measure.vars=gsub("\\.", "", MEASUREMENT_COLS))
+    dt_wide <- dcast(dt, timestamp + device + location + variable ~ version, value.var="value")
+    for (col in c("out-of-box", "cal1", "cal2")) {
+        if (! col %in% colnames(dt_wide)) {
+            dt_wide[ , (col) := NA ]
+        }
     }
-
-    # Add deployments
-    dt_wide <- dt_wide %>%
-        inner_join(deployments_to_insert, by="device") %>%
-        filter(timestamp >= start, timestamp <= end) %>%
-        select(-start, -end) %>%
-        setDT()
-
-    setcolorder(dt_wide, c("timestamp", "device", "location", MEASUREMENT_COLS))
-    setnames(dt_wide, old=MEASUREMENT_COLS, new=gsub("\\.", "", MEASUREMENT_COLS))
+    # Coalesce in descending time order of calibration version
+    dt_wide[, latest := ifelse(!is.na(cal2), cal2,
+                               ifelse(!is.na(cal1), cal1,
+                                      ifelse(!is.na(`out-of-box`), `out-of-box`, NA)))]
+    # Convert to wide format with 1 column per species
+    dt_wide <- dcast(dt_wide, timestamp + device + location ~ variable, value.var="latest")
+    setcolorder(dt_wide, c("timestamp", "device", "location", gsub("\\.", "", MEASUREMENT_COLS)))
 
     # Insert into DB
     dbAppendTable(con, "lcs_latest_raw", dt_wide)
