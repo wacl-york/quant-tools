@@ -3,8 +3,7 @@ import pandas as pd
 
 ##### Database connection
 # You open a connection in a very similar way to reading a CSV file
-#conn = sqlite3.connect("<PATH>/<TO>/quant.db")
-conn = sqlite3.connect("setup-database/quant.db")
+conn = sqlite3.connect("<PATH>/<TO>/quant.db")
 
 ##### Accessing LCS data
 # The LCS data is accessed through the 'lcs' table
