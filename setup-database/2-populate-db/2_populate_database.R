@@ -18,9 +18,7 @@ lcs_fns <- paste0("Data/",
               c("Aeroqual.csv",
                 "AQMesh.csv",
                 "PurpleAir.csv",
-                "QuantAQ_Cal1.csv",
-                "QuantAQ_Cal2.csv",
-                "QuantAQ_OOB.csv",
+                "QuantAQ.csv",
                 "Zephyr.csv"))
 
 MEASUREMENT_COLS <- c(
@@ -222,10 +220,19 @@ deployments_to_insert <- rbind(deployments_to_insert, pa_b_deployments) %>%
 
 dbAppendTable(con, "deployments_raw", deployments_to_insert)
 
+version_order <- data.frame(version=c("out-of-box", "cal1", "cal2"), version_int = 1:3)
+
 ############ LCS measurements
 for (fn in lcs_fns) {
+
     cat(sprintf("Inserting data from file %s...\n", fn))
-    dt <- fread(fn) 
+    # QuantAQ data is split amongst multiple files
+    if (fn == "Data/QuantAQ.csv") {
+        quant_aq_fns <- paste0('Data/QuantAQ_', c('OOB.csv', 'Cal1.csv', 'Cal2.csv'))
+        dt <- rbindlist(lapply(quant_aq_fns, fread))
+    } else {
+        dt <- fread(fn)
+    }
     dt <- dt[ !is.na(value)]
     dt <- dt[ measurand %in% MEASUREMENT_COLS ]
 
@@ -263,6 +270,29 @@ for (fn in lcs_fns) {
     # Find which devices have which sensors and insert into DB
     sensor_availability <- dt_wide[, lapply(.SD, function(x) as.integer(any(!is.na(x)))), .SDcols=gsub("\\.", "", MEASUREMENT_COLS), by=c("device", "version") ][ order(device, version)]
     dbAppendTable(con, "devices_versions_sensors", sensor_availability)
+
+    ###########################################################################
+    # Create table of just most recent dataset for each device/species
+    # combination
+    ###########################################################################
+    # Convert to wide format with 3 columns for each of 3 datasets and measurand is column identifier
+    dt <- melt(dt_wide, id.vars=c("timestamp", "device", "version", "location"), measure.vars=gsub("\\.", "", MEASUREMENT_COLS))
+    dt_wide <- dcast(dt, timestamp + device + location + variable ~ version, value.var="value")
+    for (col in c("out-of-box", "cal1", "cal2")) {
+        if (! col %in% colnames(dt_wide)) {
+            dt_wide[ , (col) := NA ]
+        }
+    }
+    # Coalesce in descending time order of calibration version
+    dt_wide[, latest := ifelse(!is.na(cal2), cal2,
+                               ifelse(!is.na(cal1), cal1,
+                                      ifelse(!is.na(`out-of-box`), `out-of-box`, NA)))]
+    # Convert to wide format with 1 column per species
+    dt_wide <- dcast(dt_wide, timestamp + device + location ~ variable, value.var="latest")
+    setcolorder(dt_wide, c("timestamp", "device", "location", gsub("\\.", "", MEASUREMENT_COLS)))
+
+    # Insert into DB
+    dbAppendTable(con, "lcs_latest_raw", dt_wide)
 }
 
 
