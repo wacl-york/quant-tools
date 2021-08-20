@@ -59,52 +59,85 @@ oob <- oob[ measurand != "Voltage" ]
 ########################
 # The rebased cals (1st product) were applied in March 2021
 # I'm going to ignore the non-rebased values here at the moment
-# The rebased data should be in the main Clean folder, having being placed
-# there following the retrospective rescrape of the rebased in #9, then I assume
-# it was just rebased data coming through the API.
-df_clean <- load_data("~/Documents/quant_data/Clean/",
+# In archive #9 the rebased data was retrospectively added to the Clean folder and it would have been
+# placed there by the daily scrape moving forwards.
+# However, during 13 the rebased data was moved out of Clean to make way for the 2nd cal product
+df_rebased_clean <- load_data("~/Documents/quant_data/Clean/",
                       companies="AQMesh",
                       resample="1 minute",
+                      end="2020-02-17",
+                      subset=NULL) %>% 
+                        pivot_longer(-c(timestamp, manufacturer, device), names_to="measurand") %>%
+                        arrange(timestamp, device) %>%
+                     setDT()
+summary(df_rebased_clean$timestamp)
+df_rebased <- load_data(sprintf("%s/13-AQMesh/Backup/Clean",
+                                   INPUT_DIR),
+                           companies="AQMesh",
+                           resample="1 minute",
+                           subset=NULL) %>%
+                        pivot_longer(-c(timestamp, manufacturer, device), names_to="measurand") %>%
+                        arrange(timestamp, device) %>%
+                     setDT()
+
+df_rebased <- rbindlist(list(df_rebased_clean, df_rebased))
+df_rebased <- df_rebased[ measurand != "Voltage" ]
+
+# This is the first cal before rebased, saved in #9 which was a backup of Clean
+# before the retrospective rebasing rescrape
+# I'll comment it out to save memory now
+#df_9 <- load_data(sprintf("%s/9-AQMesh/Clean",
+#                                   INPUT_DIR),
+#                           companies="AQMesh",
+#                           resample="1 minute",
+#                           subset=NULL) %>% 
+#                        pivot_longer(-c(timestamp, manufacturer, device), names_to="measurand") %>%
+#                        filter(measurand != "Voltage") %>%
+#                        arrange(timestamp, device) %>%
+#                        setDT()
+## We have the cals prior to rebasing up until 2021-02-24, which is what I had expected
+#summary(df_9$timestamp)
+
+########################
+# Second cals (rebased)
+########################
+# The 2nd cal product is in the Clean folder since the retrospective scrape in 13
+df_cals2 <- load_data("~/Documents/quant_data/Clean/",
+                      companies="AQMesh",
+                      resample="1 minute",
+                      start="2020-02-18",
                       subset=NULL) %>% 
                         pivot_longer(-c(timestamp, manufacturer, device), names_to="measurand") %>%
                         filter(measurand != "Voltage") %>%
                         arrange(timestamp, device) %>%
                      setDT()
-summary(df_clean$timestamp)
 
+# However, only NO, NO2, and O3 (plus CO2 for AQM388) were actually updated
+# So remove every other value
+df_cals2 <- df_cals2[measurand %in% c("NO", "NO2", "O3") ]
+df_cals2 <- df_cals2[ !(measurand == "CO2" & device != "AQM388")]
 
-# I'll combine it with OOB and the first cal (before rebased) to compare
-df_9 <- load_data(sprintf("%s/9-AQMesh/Clean",
-                                   INPUT_DIR),
-                           companies="AQMesh",
-                           resample="1 minute",
-                           subset=NULL) %>% 
-                        pivot_longer(-c(timestamp, manufacturer, device), names_to="measurand") %>%
-                        filter(measurand != "Voltage") %>%
-                        arrange(timestamp, device) %>%
-                        setDT()
-# We have the cals prior to rebasing up until 2021-02-24, which is what I had expected
-summary(df_9$timestamp)
-
-df_clean[, dataset := "Cals_1_Rebased" ]
+df_cals2[, dataset := "Cal_2" ]
+df_rebased[, dataset := "Cal_1" ]
 oob[, dataset := "OOB" ]
-df_9[, dataset := "Cals_1" ]
 
-df_clean <- rbindlist(list(df_clean, oob, df_9))
+df_cals2 <- df_cals2[ device != "AQM173" ]
+df_cals2 <- df_cals2[ device != "AQM801" ]
+df_rebased <- df_rebased[ device != "AQM173" ]
+df_rebased <- df_rebased[ device != "AQM801" ]
+oob <- oob[ device != "AQM173" ]
+oob <- oob[ device != "AQM801" ]
+
+df_cals2 <- rbindlist(list(df_rebased, oob, df_cals2))
 # Drop the 2 hired devices
-df_clean <- df_clean[ device != "AQM173" ]
-df_clean <- df_clean[ device != "AQM801" ]
-df_clean <- df_clean %>%
+df_cals2 <- df_cals2 %>%
                 select(timestamp, manufacturer, device, dataset, measurand, value)
 
-# Second cal product is identified as being from March 30th onwards
-df_clean[ timestamp >= as_datetime("2021-03-30"), dataset := "Cals_2" ]
-
 # Remove explicitly missing values
-df_clean <- df_clean[!is.na(value)]
+df_cals2 <- df_cals2[!is.na(value)]
 
 # Save!
-write_csv(df_clean, "Data/AQMesh.csv")
+write_csv(df_cals2, "Data/AQMesh.csv")
 
 #df_clean[ measurand %in% c("NO", "O3", "PM2.5", "PM10") ] %>%
 #    mutate(timestamp = floor_date(timestamp, "1 day")) %>%
