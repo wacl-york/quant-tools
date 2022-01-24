@@ -15,8 +15,7 @@ from multiprocessing import Pool
 
 
 def load_data(folder, companies=None, start=None, end=None, resample="1Min",
-              subset=['NO', 'NO2', 'O3', 'CO2', 'CO', 'Temperature',
-                      'RelHumidity'],
+              subset=None,
               num_cpus=-1,
               log_interval = 5):
     """
