@@ -1,6 +1,6 @@
 # collate_AQMesh.R
 # ~~~~~~~~~~~~~~~~
-source("~/repos/QUANT-tools/load_data.R")
+source("~/repos/quant-tools/load_data.R")
 library(tidyverse)
 
 INPUT_DIR <- "~/Documents/quant_data/one-off-downloads/extracted/"

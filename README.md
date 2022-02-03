@@ -1,4 +1,4 @@
-# QUANT tools
+# quant-tools
 
 Tools for working with QUANT data, either directly from the CSV files or from the cleaned database.
 Example code is included for loading the data into Python and performing basic analysis.

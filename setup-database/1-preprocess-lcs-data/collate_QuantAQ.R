@@ -1,6 +1,6 @@
 # collate_QuantAQ.R
 # ~~~~~~~~~~~~~~~~~
-source("~/repos/QUANT-tools/load_data.R")
+source("~/repos/quant-tools/load_data.R")
 library(tidyverse)
 library(jsonlite)
 
