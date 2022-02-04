@@ -245,6 +245,7 @@ for (fn in lcs_fns) {
              old=c("dataset"),
              new=c("version"))
     
+    manufacturer <- unique(dt$manufacturer)
     dt[, manufacturer := NULL ]
     
     dt_wide <- dcast(dt, timestamp + version + device ~ measurand, value.var="value")
@@ -263,6 +264,10 @@ for (fn in lcs_fns) {
 
     setcolorder(dt_wide, c("timestamp", "device", "location", "version", MEASUREMENT_COLS))
     setnames(dt_wide, old=MEASUREMENT_COLS, new=gsub("\\.", "", MEASUREMENT_COLS))
+    
+    # Save the devices associated with this manufacturer
+    devices_to_insert <- data.frame(manufacturer=manufacturer, device=unique(dt_wide$device))
+    dbAppendTable(con, "devices", devices_to_insert)
     
     # Insert into DB
     dbAppendTable(con, "lcs_raw", dt_wide)
