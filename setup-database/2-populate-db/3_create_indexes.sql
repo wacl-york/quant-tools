@@ -12,5 +12,8 @@ CREATE INDEX timestamp_device_location_idx ON lcs_latest_raw(timestamp, device, 
 CREATE INDEX device_timestamp_location_idx ON lcs_latest_raw(device, timestamp, location);
 CREATE INDEX location_latest_idx ON lcs_latest_raw(location);
 
+CREATE INDEX timestamp_device_idx ON lcs_wider_participation_raw(timestamp, device);
+CREATE INDEX device_idx ON lcs_wider_participation_raw(device);
+
 CREATE INDEX timestamp_location_idx ON ref_raw(timestamp, location);
 CREATE INDEX location_ref_idx ON ref_raw(location);

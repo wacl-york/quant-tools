@@ -5,12 +5,14 @@
 
 DROP TABLE IF EXISTS lcs_raw;
 DROP TABLE IF EXISTS lcs_latest_raw;
+DROP TABLE IF EXISTS lcs_wider_participation_raw;
 DROP TABLE IF EXISTS ref_raw;
 DROP TABLE IF EXISTS deployments_raw;
 DROP TABLE IF EXISTS devices;
 DROP TABLE IF EXISTS devices_sensors_versions;
 DROP VIEW IF EXISTS lcs;
 DROP VIEW IF EXISTS lcs_latest;
+DROP VIEW IF EXISTS lcs_wider_participation;
 DROP VIEW IF EXISTS ref;
 DROP VIEW IF EXISTS deployments;
 DROP VIEW IF EXISTS devices_versions;
@@ -38,6 +40,22 @@ CREATE TABLE lcs_latest_raw(
     timestamp INTEGER,
     device TEXT,
     location TEXT,
+    O3 REAL,
+    NO2 REAL,
+    NO REAL,
+    CO REAL,
+    CO2 REAL,
+    PM1 REAL,
+    PM25 REAL,
+    PM10 REAL,
+    Temperature REAL,
+    RelHumidity REAL,
+    PRIMARY KEY (timestamp, device)
+);
+
+CREATE TABLE lcs_wider_participation_raw(
+    timestamp INTEGER,
+    device TEXT,
     O3 REAL,
     NO2 REAL,
     NO REAL,
@@ -135,6 +153,24 @@ SELECT
     Temperature,
     RelHumidity
 FROM lcs_latest_raw;
+
+CREATE VIEW lcs_wider_participation
+AS
+SELECT
+    datetime(timestamp, 'unixepoch') as timestamp,
+    device,
+    O3,
+    NO2,
+    NO,
+    CO,
+    CO2,
+    PM1,
+    PM25,
+    PM10,
+    Temperature,
+    RelHumidity
+FROM lcs_wider_participation_raw;
+
 
 CREATE VIEW ref
 AS
