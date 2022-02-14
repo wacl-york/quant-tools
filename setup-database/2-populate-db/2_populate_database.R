@@ -73,31 +73,31 @@ deployments_to_insert <- bind_rows(
             location="York"
         ),
         data.frame(
-            device=c("PA1", "PA3"),
+            device=c("PA1", "PA3", "PA4"),
             start="2019-12-10",
             end=yesterday,
             location="Manchester"
         ),
         data.frame(
-            device=c("PA2", "PA4"),
+            device=c("PA2"),
             start="2019-12-10",
             end="2020-03-05",
             location="Manchester"
         ),
         data.frame(
-            device=c("PA2", "PA4", "PA9"),
+            device=c("PA2", "PA5", "PA9"),
             start="2020-03-11",
             end=yesterday,
             location="London"
         ),
         data.frame(
-            device=c("PA5", "PA6"),
+            device=c("PA6"),
             start="2020-01-22",
             end=yesterday,
             location="Manchester"
         ),
         data.frame(
-            device=c("PA9"),
+            device=c("PA9", "PA5"),
             start="2020-01-22",
             end="2020-03-05",
             location="Manchester"

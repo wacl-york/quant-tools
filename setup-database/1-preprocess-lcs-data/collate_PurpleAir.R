@@ -3,8 +3,6 @@
 source("~/repos/quant-tools/load_data.R")
 library(tidyverse)
 
-INPUT_DIR <- "~/Documents/quant_data/one-off-downloads/extracted/"
-
 # Collates PurpleAir CSV files in the Clean format from multiple archives into 3 datasets:
 #   - Out of box
 #   - First calibration products
