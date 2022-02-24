@@ -3,7 +3,8 @@
 
 # Populates the SQLite database with data from the first portion
 # of the QUANT study of the initial 5 companies from 2019-12-10 to
-# 2021-06-30.
+# 2021-06-30,
+# as well as the Wider Participation study.
 
 library(DBI)
 library(RSQLite)
@@ -11,7 +12,7 @@ library(tidyverse)
 library(data.table)
 library(lubridate)
 
-con <- dbConnect(SQLite(), "quant.db")
+con <- dbConnect(SQLite(), "~/Documents/quant_data/quant.db")
 
 # Load all saved data
 lcs_fns <- paste0("Data/",
@@ -317,3 +318,45 @@ setcolorder(ref_wide, c("timestamp", "location", MEASUREMENT_COLS))
 setnames(ref_wide, old=MEASUREMENT_COLS, new=gsub("\\.", "", MEASUREMENT_COLS))
 
 dbAppendTable(con, "ref_raw", ref_wide)
+
+############ WiderParticipation Study
+wp_fns <- paste0("Data/",
+                  c("RLS.csv",
+                    "Bosch.csv",
+                    "SCS.csv",
+                    "Vortex.csv",
+                    "Modulair.csv",
+                    "Oizom.csv",
+                    "Kunak.csv",
+                    "EI.csv",
+                    "Clarity.csv"
+                  )
+)
+for (fn in wp_fns) {
+
+    cat(sprintf("Inserting data from file %s...\n", fn))
+    dt <- fread(fn)
+    dt <- dt[ !is.na(value)]
+    dt <- dt[ measurand %in% MEASUREMENT_COLS ]
+
+    # Rename labels
+    manufacturer <- unique(dt$manufacturer)
+    dt[, manufacturer := NULL ]
+    
+    dt_wide <- dcast(dt, timestamp + device ~ measurand, value.var="value")
+    # Add any measurands that may not have had measurements for
+    cols_to_add <- setdiff(MEASUREMENT_COLS, colnames(dt_wide))
+    for (col in cols_to_add) {
+        dt_wide[ , (col) := NA ]
+    }
+    
+    setcolorder(dt_wide, c("timestamp", "device", MEASUREMENT_COLS))
+    setnames(dt_wide, old=MEASUREMENT_COLS, new=gsub("\\.", "", MEASUREMENT_COLS))
+    
+    # Save the devices associated with this manufacturer
+    devices_to_insert <- data.frame(manufacturer=manufacturer, device=unique(dt_wide$device))
+    dbAppendTable(con, "devices", devices_to_insert)
+    
+    # Insert into DB
+    dbAppendTable(con, "lcs_wider_participation_raw", dt_wide)
+}

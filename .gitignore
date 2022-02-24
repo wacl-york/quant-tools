@@ -1,4 +1,5 @@
 __pycache__/*
 .Rproj.user
-setup-database/Data
+*Data/
 quant.db
+
