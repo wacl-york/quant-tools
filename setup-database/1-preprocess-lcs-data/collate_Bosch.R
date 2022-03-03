@@ -6,6 +6,7 @@ library(tidyverse)
 df_clean <- load_data("~/Documents/quant_data/Clean_wider/",
                            companies="Bosch",
                            resample="1 minute",
+                           end="2022-02-28",
                            subset=NULL) %>% 
                         pivot_longer(-c(timestamp, manufacturer, device), names_to="measurand") %>%
                         arrange(timestamp, device) %>%
