@@ -303,7 +303,6 @@ for (fn in lcs_fns) {
 
 
 ############ ReferenceMeasurements
-# Combine the raw measurements back with the newly created reference device ids to insert
 ref_dt <- fread("Data/Reference.csv") 
 ref_dt <- ref_dt[ !is.na(reference)]
 
@@ -360,3 +359,5 @@ for (fn in wp_fns) {
     # Insert into DB
     dbAppendTable(con, "lcs_wider_participation_raw", dt_wide)
 }
+
+dbDisconnect(con)

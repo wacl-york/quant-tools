@@ -24,7 +24,6 @@ ld <- import("load_data")
 # Load all York AURN data from the time-period
 york_aurn <- ld$load_data(CLEAN_DIR,
                           companies="AURN",
-                          end="2021-06-30",
                           subset=NULL,
                           resample=NULL)
 
