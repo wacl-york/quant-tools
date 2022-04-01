@@ -85,6 +85,22 @@ CREATE TABLE ref_raw(
     PRIMARY KEY (timestamp, location)
 );
 
+CREATE TABLE ref_corrections(
+    timestamp INTEGER,
+    location TEXT,
+    O3 REAL,
+    NO2 REAL,
+    NO REAL,
+    CO REAL,
+    CO2 REAL,
+    PM1 REAL,
+    PM25 REAL,
+    PM10 REAL,
+    Temperature REAL,
+    RelHumidity REAL,
+    PRIMARY KEY (timestamp, location)
+);
+
 
 CREATE TABLE deployments_raw(
     device TEXT,
@@ -175,19 +191,53 @@ FROM lcs_wider_participation_raw;
 CREATE VIEW ref
 AS
 SELECT
-    datetime(timestamp, 'unixepoch') as timestamp,
-    location,
-    O3,
-    NO2,
-    NO,
-    CO,
-    CO2,
-    PM1,
-    PM25,
-    PM10,
-    Temperature,
-    RelHumidity
-FROM ref_raw;
+    datetime(raw.timestamp, 'unixepoch') as timestamp,
+    raw.location,
+    CASE WHEN cor.timestamp IS NULL
+      THEN raw.O3
+      ELSE cor.O3
+    END AS O3,
+    CASE WHEN cor.timestamp IS NULL
+      THEN raw.NO2
+      ELSE cor.NO2
+    END AS NO2,
+    CASE WHEN cor.timestamp IS NULL
+      THEN raw.NO
+      ELSE cor.NO
+    END AS NO,
+    CASE WHEN cor.timestamp IS NULL
+      THEN raw.CO
+      ELSE cor.CO
+    END AS CO,
+    CASE WHEN cor.timestamp IS NULL
+      THEN raw.CO2
+      ELSE cor.CO2
+    END AS CO2,
+    CASE WHEN cor.timestamp IS NULL
+      THEN raw.PM1
+      ELSE cor.PM1
+    END AS PM1,
+    CASE WHEN cor.timestamp IS NULL
+      THEN raw.PM25
+      ELSE cor.PM25
+    END AS PM25,
+    CASE WHEN cor.timestamp IS NULL
+      THEN raw.PM10
+      ELSE cor.PM10
+    END AS PM10,
+    CASE WHEN cor.timestamp IS NULL
+      THEN raw.Temperature
+      ELSE cor.Temperature
+    END AS Temperature,
+    CASE WHEN cor.timestamp IS NULL
+      THEN raw.RelHumidity
+      ELSE cor.RelHumidity
+    END AS RelHumidity
+FROM ref_raw raw
+LEFT JOIN ref_corrections cor
+  ON raw.timestamp = cor.timestamp AND
+     raw.location = cor.location
+;
 
 CREATE VIEW deployments
 AS

@@ -85,12 +85,16 @@ df_co2[, timestamp := as_datetime(timestamp, format="%Y-%m-%d %H:%M:%S")]
 setnames(df_co2, old="CO2 (ppb)", new="CO2")
 df_co2 <- df_co2[, .(timestamp, CO2)]
 
+# NB: Going to create a copy of the entire data frame to hold corrections
+# since _all_ CO2 values are removed.
+dt_cor <- copy(dt)
+
 ####### Clean up data on a per-gas basis
 # NO:
 #  - remove negative values
-dt[ timestamp >= "2021-06-26 23:08:00" & timestamp <= "2021-06-26 23:09:00", NO := NA ]
-dt[ timestamp >= "2021-06-30 19:28:00" & timestamp <= "2021-06-30 19:29:00", NO := NA ]
-dt[ timestamp >= "2021-07-01 17:01:00" & timestamp <= "2021-07-01 17:02:00", NO := NA]
+dt_cor[ timestamp >= "2021-06-26 23:08:00" & timestamp <= "2021-06-26 23:09:00", NO := NA ]
+dt_cor[ timestamp >= "2021-06-30 19:28:00" & timestamp <= "2021-06-30 19:29:00", NO := NA ]
+dt_cor[ timestamp >= "2021-07-01 17:01:00" & timestamp <= "2021-07-01 17:02:00", NO := NA]
 
 #  - NO2:
 #     - Remove Jan only
@@ -102,28 +106,28 @@ replacement_no2 <- db_ref %>%
 dt[ timestamp >= "2021-01-02 00:14:00" & timestamp <= "2021-01-02 04:17:00", NO2 := replacement_no2 ]
 
 #  - O3:
-#     - Remove 8th June negative bit
-dt[ timestamp >= "2021-06-08 16:05:00" & timestamp <= "2021-06-08 16:23:00", O3 := NA ]
+#    - Remove 8th June negative bit
+dt_cor[ timestamp >= "2021-06-08 16:05:00" & timestamp <= "2021-06-08 16:23:00", O3 := NA ]
 #     - Remove 30th July negative
-dt[ timestamp >= "2021-07-30 13:16:00" & timestamp <= "2021-07-30 13:27:00", O3 := NA ]
+dt_cor[ timestamp >= "2021-07-30 13:16:00" & timestamp <= "2021-07-30 13:27:00", O3 := NA ]
 
 # CO:
 #   - Remove high spikes
-dt[ timestamp >= "2021-01-30 12:08:00" & timestamp <= "2021-01-30 12:09:00", CO := NA]
-dt[ timestamp >= "2021-04-08 02:39:00" & timestamp <= "2021-04-08 02:40:00", CO := NA]
-dt[ timestamp >= "2021-05-01 12:55:00" & timestamp <= "2021-05-01 12:56:00", CO := NA]
-dt[ timestamp >= "2021-09-24 12:16:00" & timestamp <= "2021-09-24 12:18:00", CO := NA]
-dt[ timestamp >= "2021-10-26 13:17:00" & timestamp <= "2021-10-26 13:26:00", CO := NA]
-dt[ timestamp >= "2021-11-19 14:41:00" & timestamp <= "2021-11-19 14:41:00", CO := NA]
+dt_cor[ timestamp >= "2021-01-30 12:08:00" & timestamp <= "2021-01-30 12:09:00", CO := NA]
+dt_cor[ timestamp >= "2021-04-08 02:39:00" & timestamp <= "2021-04-08 02:40:00", CO := NA]
+dt_cor[ timestamp >= "2021-05-01 12:55:00" & timestamp <= "2021-05-01 12:56:00", CO := NA]
+dt_cor[ timestamp >= "2021-09-24 12:16:00" & timestamp <= "2021-09-24 12:18:00", CO := NA]
+dt_cor[ timestamp >= "2021-10-26 13:17:00" & timestamp <= "2021-10-26 13:26:00", CO := NA]
+dt_cor[ timestamp >= "2021-11-19 14:41:00" & timestamp <= "2021-11-19 14:41:00", CO := NA]
 #   - Remove the negative spike
-dt[ timestamp >= "2021-10-27 09:00:00" & timestamp <= "2021-10-27 09:15:00", CO := NA]
+dt_cor[ timestamp >= "2021-10-27 09:00:00" & timestamp <= "2021-10-27 09:15:00", CO := NA]
 #   - For baseline issues on 3rd June can either drop entirely or try to model baseline
 # Shift the baselines, where 'b1' is the baseline created from previous 2 weeks
-b1 <- min(dt[ timestamp >= "2021-05-20 14:08:00" & timestamp <= "2021-06-03 01:22:00", CO], na.rm=T)
-b2 <- min(dt[ timestamp >= "2021-06-03 14:08:00" & timestamp <= "2021-06-20 10:20:00", CO], na.rm=T)
-b3 <- min(dt[ timestamp >= "2021-06-03 01:33:00" & timestamp <= "2021-06-03 04:22:00", CO], na.rm=T)
-dt[ timestamp >= "2021-06-03 14:08:00" & timestamp <= "2021-06-20 10:20:00", CO := CO - b2 + b1]
-dt[ timestamp >= "2021-06-03 01:33:00" & timestamp <= "2021-06-03 04:22:00", CO := CO - b3 + b1]
+b1 <- min(dt_cor[ timestamp >= "2021-05-20 14:08:00" & timestamp <= "2021-06-03 01:22:00", CO], na.rm=T)
+b2 <- min(dt_cor[ timestamp >= "2021-06-03 14:08:00" & timestamp <= "2021-06-20 10:20:00", CO], na.rm=T)
+b3 <- min(dt_cor[ timestamp >= "2021-06-03 01:33:00" & timestamp <= "2021-06-03 04:22:00", CO], na.rm=T)
+dt_cor[ timestamp >= "2021-06-03 14:08:00" & timestamp <= "2021-06-20 10:20:00", CO := CO - b2 + b1]
+dt_cor[ timestamp >= "2021-06-03 01:33:00" & timestamp <= "2021-06-03 04:22:00", CO := CO - b3 + b1]
 
 #  - CO2:
 #     - Remove all downwards spikes (could interpolate middle?)
@@ -135,7 +139,7 @@ dt[ timestamp >= "2021-06-03 01:33:00" & timestamp <= "2021-06-03 04:22:00", CO 
 # need to be found to sort this
 # My initial attempt as seen below used a combination of removing values below
 # a certain threshold, and then applying a moving average filter
-dt[, CO2 := NA]
+dt_cor[, CO2 := NA]
 #dt[ timestamp >= "2021-06-02 09:55:00" & timestamp <= "2021-06-03 00:23:00", CO2 := emaRcpp(pmax(CO2, 400), 0.1)]
 #dt[ timestamp >= "2021-06-03 00:00:00" & timestamp <= "2021-06-03 08:50:00", CO2 := emaRcpp(pmax(CO2, 420), 0.1)]
 #dt[ timestamp >= "2021-06-03 16:47:00" & timestamp <= "2021-06-04 00:23:00", CO2 := emaRcpp(pmax(CO2, 410), 0.1)]
@@ -158,20 +162,26 @@ dt[, CO2 := NA]
 
 #  - Temp/RH:
 #     - Remove the 2nd May
-dt[ timestamp >= "2021-05-02 13:51:00" & timestamp <= "2021-05-02 13:59:00", Temperature := NA ]
-dt[ timestamp >= "2021-05-02 13:51:00" & timestamp <= "2021-05-02 13:59:00", RelHumidity := NA ]
+dt_cor[ timestamp >= "2021-05-02 13:51:00" & timestamp <= "2021-05-02 13:59:00", Temperature := NA ]
+dt_cor[ timestamp >= "2021-05-02 13:51:00" & timestamp <= "2021-05-02 13:59:00", RelHumidity := NA ]
 
 # Lead MAQS data by 1 minute
-dt <- dt[, lapply(.SD, lead, 1)] 
+dt <- dt[, lapply(.SD, lead, 1)]
 dt$timestamp <- dt$timestamp - minutes(1)
 dt <- dt[1:(nrow(dt) - 1)]
 
+dt_cor <- dt_cor[, lapply(.SD, lead, 1)]
+dt_cor$timestamp <- dt_cor$timestamp - minutes(1)
+dt_cor <- dt_cor[1:(nrow(dt_cor) - 1)]
+
 # Add location column
 dt[, location := "Manchester"]
+dt_cor[, location := "Manchester"]
 
 # Reorder to match DB
 colorder <- tbl(con, "ref") %>% colnames()
 setcolorder(dt, colorder)
+setcolorder(dt_cor, colorder)
 
 # Remove values that are already in the DB
 dbExecute(con, "DELETE FROM ref_raw WHERE location = 'Manchester' AND timestamp >= ?",
@@ -179,3 +189,6 @@ dbExecute(con, "DELETE FROM ref_raw WHERE location = 'Manchester' AND timestamp 
 
 # Add new values
 dbAppendTable(con, "ref_raw", dt)
+dbAppendTable(con, "ref_corrections", dt_cor)
+
+dbDisconnect(con)

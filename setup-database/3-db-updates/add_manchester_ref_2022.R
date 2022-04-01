@@ -46,20 +46,32 @@ dt <- dt[, lapply(.SD, na_if, y=-9999)]
 ####### Clean up data on a per-gas basis
 # The only gas that needs cleaning is the CO2 for which I'll just remove
 # entirely
-dt[, CO2 := NA]
+# NB: Going to create a copy of the entire data frame to hold corrections
+# since _all_ CO2 values are removed.
+dt_cor <- copy(dt)
+dt_cor[, CO2 := NA]
 
 # Lead MAQS data by 1 minute
-dt <- dt[, lapply(.SD, lead, 1)] 
+dt <- dt[, lapply(.SD, lead, 1)]
 dt$timestamp <- dt$timestamp - minutes(1)
 dt <- dt[1:(nrow(dt) - 1)]
 
+dt_cor <- dt_cor[, lapply(.SD, lead, 1)]
+dt_cor$timestamp <- dt_cor$timestamp - minutes(1)
+dt_cor <- dt_cor[1:(nrow(dt_cor) - 1)]
+
 # Add location column
 dt[, location := "Manchester"]
+dt_cor[, location := "Manchester"]
 
 # Reorder to match DB
 
 colorder <- tbl(con, "ref") %>% colnames()
 setcolorder(dt, colorder)
+setcolorder(dt_cor, colorder)
 
 # Add new values
 dbAppendTable(con, "ref_raw", dt)
+dbAppendTable(con, "ref_corrections", dt_cor)
+
+dbDisconnect(con)

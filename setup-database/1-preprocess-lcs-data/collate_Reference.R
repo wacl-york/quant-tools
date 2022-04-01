@@ -106,7 +106,7 @@ dt_ref_long[, timestamp := floor_date(timestamp, "1 min")]
 dt_ref_long <- dt_ref_long[, list("reference" = mean(reference, na.rm=T)), by=c("timestamp", "location", "variable")]
 
 # Restrict to study period
-dt_ref_long <- dt_ref_long[ timestamp >= as_datetime("2019-12-10") & timestamp < as_datetime("2021-07-01")]
+dt_ref_long <- dt_ref_long[ timestamp >= as_datetime("2019-12-10") ]
 
 # Remove missing
 dt_ref_long <- dt_ref_long[ !is.na(reference) ]
