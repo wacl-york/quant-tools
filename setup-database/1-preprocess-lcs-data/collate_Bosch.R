@@ -29,10 +29,11 @@ df_clean %>%
 
 df_clean <- df_clean %>%
     mutate(
-           device = ifelse(grepl("_1$", measurand), sprintf("%s_b", device), device),
-           device = ifelse(grepl("_2$", measurand), sprintf("%s_c", device), device),
-           measurand = gsub("_b$", "", measurand),
-           measurand = gsub("_c$", "", measurand)
+           device = ifelse(grepl("_2$", measurand), sprintf("%s_b", device), device),
+           device = ifelse(grepl("_3$", measurand), sprintf("%s_c", device), device),
+           measurand = gsub("_1$", "", measurand),
+           measurand = gsub("_2$", "", measurand),
+           measurand = gsub("_3$", "", measurand)
            ) %>%
     filter(measurand != "Pressure")
 
