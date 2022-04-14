@@ -77,8 +77,9 @@ df_no2 <- df_no2 %>%
               NO = mean(NO, na.rm=T)) %>%
     ungroup()
 
-# NO2 units need converting to ppb from mV
+# NO2 and NO units need converting to ppb from mV
 df_no2$NO2 <- df_no2$NO2 * 1000
+df_no2$NO <- df_no2$NO * 1000
 
 ###### Combining streams
 # Combine datasets into 1 data frame
