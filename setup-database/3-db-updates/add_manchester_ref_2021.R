@@ -92,42 +92,42 @@ dt_cor <- copy(dt)
 ####### Clean up data on a per-gas basis
 # NO:
 #  - remove negative values
-dt_cor[ timestamp >= "2021-06-26 23:08:00" & timestamp <= "2021-06-26 23:09:00", NO := NA ]
-dt_cor[ timestamp >= "2021-06-30 19:28:00" & timestamp <= "2021-06-30 19:29:00", NO := NA ]
-dt_cor[ timestamp >= "2021-07-01 17:01:00" & timestamp <= "2021-07-01 17:02:00", NO := NA]
+dt_cor[ timestamp >= as_datetime("2021-06-26 23:08:00") & timestamp <= as_datetime("2021-06-26 23:09:00"), NO := NA ]
+dt_cor[ timestamp >= as_datetime("2021-06-30 19:28:00") & timestamp <= as_datetime("2021-06-30 19:29:00"), NO := NA ]
+dt_cor[ timestamp >= as_datetime("2021-07-01 17:01:00") & timestamp <= as_datetime("2021-07-01 17:02:00"), NO := NA]
 
 #  - NO2:
 #     - Remove Jan only
 # Use these from the original dataset
-dt[ timestamp >= "2021-01-02 00:14:00" & timestamp <= "2021-01-02 04:17:00", NO2 := NA ]
+dt[ timestamp >= as_datetime("2021-01-02 00:14:00") & timestamp <= as_datetime("2021-01-02 04:17:00"), NO2 := NA ]
 replacement_no2 <- db_ref %>%
-    filter(timestamp >= "2021-01-02 00:13:00", timestamp <= "2021-01-02 04:16:00") %>%
+    filter(timestamp >= as_datetime("2021-01-02 00:13:00"), timestamp <= as_datetime("2021-01-02 04:16:00")) %>%
     pull(NO2)
-dt[ timestamp >= "2021-01-02 00:14:00" & timestamp <= "2021-01-02 04:17:00", NO2 := replacement_no2 ]
+dt[ timestamp >= as_datetime("2021-01-02 00:14:00") & timestamp <= as_datetime("2021-01-02 04:17:00"), NO2 := replacement_no2 ]
 
 #  - O3:
 #    - Remove 8th June negative bit
-dt_cor[ timestamp >= "2021-06-08 16:05:00" & timestamp <= "2021-06-08 16:23:00", O3 := NA ]
+dt_cor[ timestamp >= as_datetime("2021-06-08 16:05:00") & timestamp <= as_datetime("2021-06-08 16:23:00"), O3 := NA ]
 #     - Remove 30th July negative
-dt_cor[ timestamp >= "2021-07-30 13:16:00" & timestamp <= "2021-07-30 13:27:00", O3 := NA ]
+dt_cor[ timestamp >= as_datetime("2021-07-30 13:16:00") & timestamp <= as_datetime("2021-07-30 13:27:00"), O3 := NA ]
 
 # CO:
 #   - Remove high spikes
-dt_cor[ timestamp >= "2021-01-30 12:08:00" & timestamp <= "2021-01-30 12:09:00", CO := NA]
-dt_cor[ timestamp >= "2021-04-08 02:39:00" & timestamp <= "2021-04-08 02:40:00", CO := NA]
-dt_cor[ timestamp >= "2021-05-01 12:55:00" & timestamp <= "2021-05-01 12:56:00", CO := NA]
-dt_cor[ timestamp >= "2021-09-24 12:16:00" & timestamp <= "2021-09-24 12:18:00", CO := NA]
-dt_cor[ timestamp >= "2021-10-26 13:17:00" & timestamp <= "2021-10-26 13:26:00", CO := NA]
-dt_cor[ timestamp >= "2021-11-19 14:41:00" & timestamp <= "2021-11-19 14:41:00", CO := NA]
+dt_cor[ timestamp >= as_datetime("2021-01-30 12:08:00") & timestamp <= as_datetime("2021-01-30 12:09:00"), CO := NA]
+dt_cor[ timestamp >= as_datetime("2021-04-08 02:39:00") & timestamp <= as_datetime("2021-04-08 02:40:00"), CO := NA]
+dt_cor[ timestamp >= as_datetime("2021-05-01 12:55:00") & timestamp <= as_datetime("2021-05-01 12:56:00"), CO := NA]
+dt_cor[ timestamp >= as_datetime("2021-09-24 12:16:00") & timestamp <= as_datetime("2021-09-24 12:18:00"), CO := NA]
+dt_cor[ timestamp >= as_datetime("2021-10-26 13:17:00") & timestamp <= as_datetime("2021-10-26 13:26:00"), CO := NA]
+dt_cor[ timestamp >= as_datetime("2021-11-19 14:41:00") & timestamp <= as_datetime("2021-11-19 14:41:00"), CO := NA]
 #   - Remove the negative spike
-dt_cor[ timestamp >= "2021-10-27 09:00:00" & timestamp <= "2021-10-27 09:15:00", CO := NA]
+dt_cor[ timestamp >= as_datetime("2021-10-27 09:00:00") & timestamp <= as_datetime("2021-10-27 09:15:00"), CO := NA]
 #   - For baseline issues on 3rd June can either drop entirely or try to model baseline
 # Shift the baselines, where 'b1' is the baseline created from previous 2 weeks
-b1 <- min(dt_cor[ timestamp >= "2021-05-20 14:08:00" & timestamp <= "2021-06-03 01:22:00", CO], na.rm=T)
-b2 <- min(dt_cor[ timestamp >= "2021-06-03 14:08:00" & timestamp <= "2021-06-20 10:20:00", CO], na.rm=T)
-b3 <- min(dt_cor[ timestamp >= "2021-06-03 01:33:00" & timestamp <= "2021-06-03 04:22:00", CO], na.rm=T)
-dt_cor[ timestamp >= "2021-06-03 14:08:00" & timestamp <= "2021-06-20 10:20:00", CO := CO - b2 + b1]
-dt_cor[ timestamp >= "2021-06-03 01:33:00" & timestamp <= "2021-06-03 04:22:00", CO := CO - b3 + b1]
+b1 <- min(dt_cor[ timestamp >= as_datetime("2021-05-20 14:08:00") & timestamp <= as_datetime("2021-06-03 01:22:00"), CO], na.rm=T)
+b2 <- min(dt_cor[ timestamp >= as_datetime("2021-06-03 14:08:00") & timestamp <= as_datetime("2021-06-20 10:20:00"), CO], na.rm=T)
+b3 <- min(dt_cor[ timestamp >= as_datetime("2021-06-03 01:33:00") & timestamp <= as_datetime("2021-06-03 04:22:00"), CO], na.rm=T)
+dt_cor[ timestamp >= as_datetime("2021-06-03 14:08:00") & timestamp <= as_datetime("2021-06-20 10:20:00"), CO := CO - b2 + b1]
+dt_cor[ timestamp >= as_datetime("2021-06-03 01:33:00") & timestamp <= as_datetime("2021-06-03 04:22:00"), CO := CO - b3 + b1]
 
 #  - CO2:
 #     - Remove all downwards spikes (could interpolate middle?)
@@ -162,8 +162,8 @@ dt_cor[, CO2 := NA]
 
 #  - Temp/RH:
 #     - Remove the 2nd May
-dt_cor[ timestamp >= "2021-05-02 13:51:00" & timestamp <= "2021-05-02 13:59:00", Temperature := NA ]
-dt_cor[ timestamp >= "2021-05-02 13:51:00" & timestamp <= "2021-05-02 13:59:00", RelHumidity := NA ]
+dt_cor[ timestamp >= as_datetime("2021-05-02 13:51:00") & timestamp <= as_datetime("2021-05-02 13:59:00"), Temperature := NA ]
+dt_cor[ timestamp >= as_datetime("2021-05-02 13:51:00") & timestamp <= as_datetime("2021-05-02 13:59:00"), RelHumidity := NA ]
 
 # Lead MAQS data by 1 minute
 dt <- dt[, lapply(.SD, lead, 1)]
@@ -185,6 +185,8 @@ setcolorder(dt_cor, colorder)
 
 # Remove values that are already in the DB
 dbExecute(con, "DELETE FROM ref_raw WHERE location = 'Manchester' AND timestamp >= ?",
+          params=list(as.numeric(as_datetime("2021-01-01"))))
+dbExecute(con, "DELETE FROM ref_corrections WHERE location = 'Manchester' AND timestamp >= ?",
           params=list(as.numeric(as_datetime("2021-01-01"))))
 
 # Add new values
