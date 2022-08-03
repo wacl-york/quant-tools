@@ -120,24 +120,24 @@ setcolorder(df_clean, c("timestamp", "manufacturer", "device", "dataset", "measu
 # Save!
 write_csv(df_clean, "Data/Zephyr.csv")
 
-df_clean[ measurand %in% c("NO", "NO2", "O3", "PM2.5", "PM10") ] %>%
-    mutate(timestamp = floor_date(timestamp, "1 day")) %>%
-    group_by(timestamp, device, measurand, dataset) %>%
-    summarise(value = mean(value, na.rm=T)) %>%
-    ggplot(aes(x=timestamp, y=value, colour=dataset)) +
-        geom_line() +
-        facet_grid(cols=vars(device), rows=vars(measurand), scales="free") +
-        theme_bw() +
-        theme(legend.position="bottom") +
-        labs(x="", y="Gas (ppb) / PM (ug/m3)", title="Zephyr 3 datasets (24 hour average)")
+#df_clean[ measurand %in% c("NO", "NO2", "O3", "PM2.5", "PM10") ] %>%
+#    mutate(timestamp = floor_date(timestamp, "1 day")) %>%
+#    group_by(timestamp, device, measurand, dataset) %>%
+#    summarise(value = mean(value, na.rm=T)) %>%
+#    ggplot(aes(x=timestamp, y=value, colour=dataset)) +
+#        geom_line() +
+#        facet_grid(cols=vars(device), rows=vars(measurand), scales="free") +
+#        theme_bw() +
+#        theme(legend.position="bottom") +
+#        labs(x="", y="Gas (ppb) / PM (ug/m3)", title="Zephyr 3 datasets (24 hour average)")
 
-df_clean[ measurand %in% c("NO", "NO2", "O3", "PM2.5", "PM10") & as_date(timestamp) <= as_date("2020-06-05") ] %>%
-    mutate(timestamp = floor_date(timestamp, "1 day")) %>%
-    group_by(timestamp, device, measurand, dataset) %>%
-    summarise(value = mean(value, na.rm=T)) %>%
-    ggplot(aes(x=timestamp, y=value, colour=dataset)) +
-        geom_line() +
-        facet_grid(cols=vars(device), rows=vars(measurand), scales="free") +
-        theme_bw() +
-        theme(legend.position="bottom") +
-        labs(x="", y="Gas (ppb) / PM (ug/m3)", title="Zephyr 3 datasets (24 hour average) before first cals applied on 4th June")
+#df_clean[ measurand %in% c("NO", "NO2", "O3", "PM2.5", "PM10") & as_date(timestamp) <= as_date("2020-06-05") ] %>%
+#    mutate(timestamp = floor_date(timestamp, "1 day")) %>%
+#    group_by(timestamp, device, measurand, dataset) %>%
+#    summarise(value = mean(value, na.rm=T)) %>%
+#    ggplot(aes(x=timestamp, y=value, colour=dataset)) +
+#        geom_line() +
+#        facet_grid(cols=vars(device), rows=vars(measurand), scales="free") +
+#        theme_bw() +
+#        theme(legend.position="bottom") +
+#        labs(x="", y="Gas (ppb) / PM (ug/m3)", title="Zephyr 3 datasets (24 hour average) before first cals applied on 4th June")
