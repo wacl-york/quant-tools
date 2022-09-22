@@ -14,11 +14,7 @@
 #   - QUANT_DB_PASSWORD
 
 # TODO post-hoc:
-#    - Check have got all PA data
-#    - Add sensor cal dates. For QUANT want to go through and check all makes sense with those exceptions
-#       - i.e. zephyr only updated cals for NO on cal1, T + RH never got updated for any company etc...
-#       - also do same for WP
-#    - Add AQY875 to LCSinstruments
+#    - Update data (notably PA)
 
 library(DBI)
 library(RPostgres)
@@ -269,7 +265,9 @@ for (fn in wp_fns) {
 
 
 ############ ReferenceMeasurements
+# Don't pull Manchester data from old DB as will be uploading that directly from CEDA
 ref_dt <- tbl(con_sqlite, "ref_raw") %>%
+            filter(location != "Manchester") |>
             collect() %>%
             setDT()
 ref_dt <- melt(ref_dt, id.vars=c("timestamp", "location"), variable.name="variable", value.name="reference")
@@ -329,6 +327,7 @@ for (start in start_points) {
 # So I need to pivot to long then compare to the long measurements to find cases
 # where the flagged value is NA but we have a measurement
 ref_flags <- tbl(con_sqlite, "ref_corrections") %>%
+            filter(location != "Manchester") |>
             collect() %>%
             setDT()
 ref_flags <- melt(ref_flags, id.vars=c("timestamp", "location"), variable.name="variable", value.name="reference")
@@ -341,6 +340,280 @@ setnames(ref_flags, old=c("timestamp", "reference"), new=c("time", "flagged"))
 ref_flags <- ref_measurements[ref_flags, on=c("time", "instrument")]
 ref_flags_to_insert <- ref_flags[ is.na(flagged) & !is.na(measurement), .(instrument, measurand, sensornumber, calibrationname, time)]
 dbAppendTable(con, "flag", ref_flags_to_insert)
+
+############ Manchester Reference data from CEDA
+# The ratified data has been archived in CEDA, so I'll directly upload it from there
+# rather than my curated dataset
+ceda_dir <- "FILL OUT"
+
+###### O3
+thermo_files <- list.files(sprintf("%s/OSCA_MAQS_Thermo_49i_O3", ceda_dir), recursive = TRUE, full.names = TRUE, pattern="*.csv")
+thermo_files <- thermo_files[!grepl("oldfiles", thermo_files)]
+instrument_name <- "Thermo49i_Manchester"
+thermo_ceda <- map_dfr(setNames(thermo_files, thermo_files), read_csv, show_col_types=FALSE, .id="filename") |>
+  select(time=datetime,
+         O3_measurement=`Ozone (ppb)`,
+         O3_flag=O3_qc_flags) |>
+    mutate(
+         instrument = instrument_name,
+         instrumenttypeid = 2) |>  # For some reason the temperature flag is never set despite clear errors 
+    pivot_longer(c(starts_with("O3")),
+                 names_pattern="(.+)_(.+)", names_to=c("measurand", "type")) |>
+    pivot_wider(names_from=type, values_from=value) |>
+    mutate(sensornumber=1,
+           calibrationname="ratified",
+           location="Manchester")  # Only have 1 sensor per measurand
+# instrument
+dbAppendTable(con, "instrument", thermo_ceda |> distinct(instrument, instrumenttypeid))
+# referenceinstrument
+dbAppendTable(con, "referenceinstrument", thermo_ceda |> distinct(instrument, instrumenttypeid))
+# deployment
+dbAppendTable(con, "deployment", thermo_ceda |> group_by(instrument, location) |> summarise(start = min(time), finish=max(time)))
+# sensor
+dbAppendTable(con, "sensor", thermo_ceda |> distinct(instrument, measurand, sensornumber))
+# sensorcalibration
+dbAppendTable(con, "sensorcalibration", thermo_ceda |> group_by(instrument, measurand, sensornumber, calibrationname) |> summarise(dateapplied = min(time)))
+# measurement
+dbAppendTable(con, "measurement", thermo_ceda |> select(instrument, measurand, sensornumber, calibrationname, time, measurement))
+# flag
+dbAppendTable(con, "flag", thermo_ceda |> filter(flag != 1) |> select(instrument, measurand, sensornumber, calibrationname, time))
+
+###### NO2
+teledyne_files <- list.files(sprintf("%s/teledyne_no2", ceda_dir), recursive = TRUE, full.names = TRUE, pattern="*.csv")
+instrument_name <- "TeledyneT500U_Manchester"
+teledyne_ceda <- map_dfr(teledyne_files, read_csv, show_col_types=FALSE) |>
+  select(time=datetime,
+         NO2_measurement=`NO2 (ppb)`,
+         NO2_flag=NO2_qc_flags) |>
+    mutate(
+         instrument = instrument_name,
+         instrumenttypeid = 2) |>  # For some reason the temperature flag is never set despite clear errors 
+    pivot_longer(c(starts_with("NO2")),
+                 names_pattern="(.+)_(.+)", names_to=c("measurand", "type")) |>
+    pivot_wider(names_from=type, values_from=value) |>
+    mutate(sensornumber=1,
+           calibrationname="ratified",
+           location="Manchester")  # Only have 1 sensor per measurand
+# instrument
+dbAppendTable(con, "instrument", teledyne_ceda |> distinct(instrument, instrumenttypeid))
+# referenceinstrument
+dbAppendTable(con, "referenceinstrument", teledyne_ceda |> distinct(instrument, instrumenttypeid))
+# deployment
+dbAppendTable(con, "deployment", teledyne_ceda |> group_by(instrument, location) |> summarise(start = min(time), finish=max(time)))
+# sensor
+dbAppendTable(con, "sensor", teledyne_ceda |> distinct(instrument, measurand, sensornumber))
+# sensorcalibration
+dbAppendTable(con, "sensorcalibration", teledyne_ceda |> group_by(instrument, measurand, sensornumber, calibrationname) |> summarise(dateapplied = min(time)))
+# measurement
+dbAppendTable(con, "measurement", teledyne_ceda |> select(instrument, measurand, sensornumber, calibrationname, time, measurement))
+# flag
+dbAppendTable(con, "flag", teledyne_ceda |> filter(flag != 1) |> select(instrument, measurand, sensornumber, calibrationname, time))
+
+###### NO
+thermo_files <- list.files(sprintf("%s/OSCA_MAQS_Thermo_49iY_NO-NOy", ceda_dir), recursive = TRUE, full.names = TRUE, pattern="*.csv")
+thermo_files <- thermo_files[!grepl("oldfiles", thermo_files)]
+instrument_name <- "Thermo49iY_Manchester"
+thermo_ceda <- map_dfr(thermo_files, read_csv, show_col_types=FALSE) |>
+  select(time=datetime,
+         NO_measurement=`NO (ppb)`,
+         NO_flag=NOy_qc_flags) |>
+    mutate(
+         instrument = instrument_name,
+         instrumenttypeid = 2) |>  # For some reason the temperature flag is never set despite clear errors 
+    pivot_longer(c(starts_with("NO")),
+                 names_pattern="(.+)_(.+)", names_to=c("measurand", "type")) |>
+    pivot_wider(names_from=type, values_from=value) |>
+    mutate(sensornumber=1,
+           calibrationname="ratified",
+           location="Manchester")  # Only have 1 sensor per measurand
+# instrument
+dbAppendTable(con, "instrument", thermo_ceda |> distinct(instrument, instrumenttypeid))
+# referenceinstrument
+dbAppendTable(con, "referenceinstrument", thermo_ceda |> distinct(instrument, instrumenttypeid))
+# deployment
+dbAppendTable(con, "deployment", thermo_ceda |> group_by(instrument, location) |> summarise(start = min(time), finish=max(time)))
+# sensor
+dbAppendTable(con, "sensor", thermo_ceda |> distinct(instrument, measurand, sensornumber))
+# sensorcalibration
+dbAppendTable(con, "sensorcalibration", thermo_ceda |> group_by(instrument, measurand, sensornumber, calibrationname) |> summarise(dateapplied = min(time)))
+# measurement
+dbAppendTable(con, "measurement", thermo_ceda |> select(instrument, measurand, sensornumber, calibrationname, time, measurement))
+# flag
+dbAppendTable(con, "flag", thermo_ceda |> filter(flag != 1) |> select(instrument, measurand, sensornumber, calibrationname, time))
+
+###### CO
+thermo_files <- list.files(sprintf("%s/OSCA_MAQS_Thermo_48i_CO", ceda_dir), recursive = TRUE, full.names = TRUE, pattern="*.csv")
+thermo_files <- thermo_files[!grepl("oldfiles", thermo_files)]
+instrument_name <- "Thermo48i_Manchester"
+thermo_ceda <- map_dfr(thermo_files, read_csv, show_col_types=FALSE) |>
+  select(time=datetime,
+         CO_measurement=`CO (ppb)`,
+         CO_flag=CO_qc_flags) |>
+    mutate(
+         instrument = instrument_name,
+         instrumenttypeid = 2) |>  # For some reason the temperature flag is never set despite clear errors 
+    pivot_longer(c(starts_with("CO")),
+                 names_pattern="(.+)_(.+)", names_to=c("measurand", "type")) |>
+    pivot_wider(names_from=type, values_from=value) |>
+    mutate(sensornumber=1,
+           calibrationname="ratified",
+           location="Manchester")  # Only have 1 sensor per measurand
+# instrument
+dbAppendTable(con, "instrument", thermo_ceda |> distinct(instrument, instrumenttypeid))
+# referenceinstrument
+dbAppendTable(con, "referenceinstrument", thermo_ceda |> distinct(instrument, instrumenttypeid))
+# deployment
+dbAppendTable(con, "deployment", thermo_ceda |> group_by(instrument, location) |> summarise(start = min(time), finish=max(time)))
+# sensor
+dbAppendTable(con, "sensor", thermo_ceda |> distinct(instrument, measurand, sensornumber))
+# sensorcalibration
+dbAppendTable(con, "sensorcalibration", thermo_ceda |> group_by(instrument, measurand, sensornumber, calibrationname) |> summarise(dateapplied = min(time)))
+# measurement
+dbAppendTable(con, "measurement", thermo_ceda |> select(instrument, measurand, sensornumber, calibrationname, time, measurement))
+# flag
+dbAppendTable(con, "flag", thermo_ceda |> filter(flag != 1) |> select(instrument, measurand, sensornumber, calibrationname, time))
+
+###### CO2
+lgr_files <- list.files(sprintf("%s/OSCA_MAQS_LGR_CH4_CO_CO2_H2O", ceda_dir), recursive = TRUE, full.names = TRUE, pattern="*.csv")
+lgr_files <- lgr_files[!grepl("oldfiles", lgr_files)]
+instrument_name <- "LGR_Manchester"
+lgr_ceda <- map_dfr(lgr_files, read_csv, show_col_types=FALSE) |>
+  select(time=datetime,
+         CH4_measurement=`CH4 (ppm)`,
+         H2O_measurement=`H2O (ppm)`,
+         CO2_measurement=`CO2 (ppm)`,
+         CO_measurement=`CO (ppb)`,
+         CH4_flag=CH4_qc_flags,
+         H2O_flag=H2O_qc_flags,
+         CO2_flag=CO2_qc_flags,
+         CO_flag=CO_qc_flags
+         ) |>
+    mutate(
+         instrument = instrument_name,
+         instrumenttypeid = 2) |>  # For some reason the temperature flag is never set despite clear errors 
+    pivot_longer(-c(time, instrument, instrumenttypeid),
+                 names_pattern="(.+)_(.+)", names_to=c("measurand", "type")) |>
+    pivot_wider(names_from=type, values_from=value) |>
+    mutate(sensornumber=1,
+           calibrationname="ratified",
+           location="Manchester")  # Only have 1 sensor per measurand
+# instrument
+dbAppendTable(con, "instrument", lgr_ceda |> distinct(instrument, instrumenttypeid))
+# referenceinstrument
+dbAppendTable(con, "referenceinstrument", lgr_ceda |> distinct(instrument, instrumenttypeid))
+# deployment
+dbAppendTable(con, "deployment", lgr_ceda |> group_by(instrument, location) |> summarise(start = min(time), finish=max(time)))
+# sensor
+dbAppendTable(con, "sensor", lgr_ceda |> distinct(instrument, measurand, sensornumber))
+# sensorcalibration
+dbAppendTable(con, "sensorcalibration", lgr_ceda |> group_by(instrument, measurand, sensornumber, calibrationname) |> summarise(dateapplied = min(time)))
+# measurement
+dbAppendTable(con, "measurement", lgr_ceda |> select(instrument, measurand, sensornumber, calibrationname, time, measurement))
+# flag
+dbAppendTable(con, "flag", lgr_ceda |> filter(flag != 1) |> select(instrument, measurand, sensornumber, calibrationname, time))
+
+###### WS + WD
+sonic_files <- list.files(sprintf("%s/sonic_windmaster", ceda_dir), recursive = TRUE, full.names = TRUE, pattern="*.csv")
+instrument_name <- "Sonic_Manchester"
+sonic_ceda <- map_dfr(sonic_files, read_csv, show_col_types=FALSE) |>
+  select(time=datetime,
+         WindSpeed_measurement=`wind_Sp (m/s)`,
+         WindDirection_measurement=`wind_Dr (deg)`,
+         WindSpeed_flag=qc_flag_wind_Sp,
+         WindDirection_flag=qc_flag_wind_Dr) |>
+    mutate(
+         instrument = instrument_name,
+         instrumenttypeid = 2) |>  # For some reason the temperature flag is never set despite clear errors 
+    pivot_longer(c(starts_with("WindSpeed"), starts_with("WindDirection")),
+                 names_pattern="(.+)_(.+)", names_to=c("measurand", "type")) |>
+    pivot_wider(names_from=type, values_from=value) |>
+    mutate(sensornumber=1,
+           calibrationname="ratified",
+           location="Manchester")  # Only have 1 sensor per measurand
+# instrument
+dbAppendTable(con, "instrument", sonic_ceda |> distinct(instrument, instrumenttypeid))
+# referenceinstrument
+dbAppendTable(con, "referenceinstrument", sonic_ceda |> distinct(instrument, instrumenttypeid))
+# deployment
+dbAppendTable(con, "deployment", sonic_ceda |> group_by(instrument, location) |> summarise(start = min(time), finish=max(time)))
+# sensor
+dbAppendTable(con, "sensor", sonic_ceda |> distinct(instrument, measurand, sensornumber))
+# sensorcalibration
+dbAppendTable(con, "sensorcalibration", sonic_ceda |> group_by(instrument, measurand, sensornumber, calibrationname) |> summarise(dateapplied = min(time)))
+# measurement
+dbAppendTable(con, "measurement", sonic_ceda |> select(instrument, measurand, sensornumber, calibrationname, time, measurement))
+# flag
+dbAppendTable(con, "flag", sonic_ceda |> filter(flag != 1) |> select(instrument, measurand, sensornumber, calibrationname, time))
+
+###### Temp + RH
+met_files <- list.files(sprintf("%s/fidas_met", ceda_dir), recursive = TRUE, full.names = TRUE, pattern="*.csv")
+instrument_name <- "FIDAS_Manchester"
+met_ceda <- map_dfr(met_files, read_csv, show_col_types=FALSE) |>
+  select(time=datetime,
+         Temperature_measurement=`Temperature (deg C)`,
+         Pressure_measurement=`Pressure (mbar)`,
+         RelHumidity_measurement=`Humidity (%)`,
+         Temperature_flag=Temperature_Flag,
+         Pressure_flag=Pressure_Flag,
+         RelHumidity_flag=Humidity_Flag
+         ) |>
+    mutate(Temperature_flag = RelHumidity_flag,
+           instrument = instrument_name,
+           instrumenttypeid = 2) |>  # For some reason the temperature flag is never set despite clear errors 
+    pivot_longer(c(starts_with("Temperature"), starts_with("Pressure"), starts_with("RelHumidity")),
+                 names_pattern="(.+)_(.+)", names_to=c("measurand", "type")) |>
+    pivot_wider(names_from=type, values_from=value) |>
+    mutate(sensornumber=1,
+           calibrationname="ratified",
+           location="Manchester")  # Only have 1 sensor per measurand
+
+# instrument
+dbAppendTable(con, "instrument", met_ceda |> distinct(instrument, instrumenttypeid))
+# referenceinstrument
+dbAppendTable(con, "referenceinstrument", met_ceda |> distinct(instrument, instrumenttypeid))
+# deployment
+dbAppendTable(con, "deployment", met_ceda |> group_by(instrument, location) |> summarise(start = min(time), finish=max(time)))
+# sensor
+dbAppendTable(con, "sensor", met_ceda |> distinct(instrument, measurand, sensornumber))
+# sensorcalibration
+dbAppendTable(con, "sensorcalibration", met_ceda |> group_by(instrument, measurand, sensornumber, calibrationname) |> summarise(dateapplied = min(time)))
+# measurement
+dbAppendTable(con, "measurement", met_ceda |> select(instrument, measurand, sensornumber, calibrationname, time, measurement))
+# flag
+dbAppendTable(con, "flag", met_ceda |> filter(flag != 1) |> select(instrument, measurand, sensornumber, calibrationname, time))
+
+###### PM
+fidas_files <- list.files(sprintf("%s/OSCA_Manc_FIDAS_PM", ceda_dir), recursive = TRUE, full.names = TRUE, pattern="*.csv")
+instrument_name <- "FIDAS_Manchester"
+fidas_ceda <- map_dfr(fidas_files, read_csv, show_col_types=FALSE) |>
+  select(time=datetime,
+         PM1_measurement=`PM1 (ug/m3)`,
+         PM25_measurement=`PM2.5 (ug/m3)`,
+         PM10_measurement=`PM10 (ug/m3)`,
+         PM_flag=`PM_Flag`
+  ) |>
+    mutate(
+         instrument = instrument_name,
+         PM1_flag = PM_flag,
+         PM25_flag = PM_flag,
+         PM10_flag = PM_flag,
+         instrumenttypeid = 2) |>  # For some reason the temperature flag is never set despite clear errors 
+    select(-PM_flag) |>
+    pivot_longer(starts_with("PM"),
+                 names_pattern="(.+)_(.+)", names_to=c("measurand", "type")) |>
+    pivot_wider(names_from=type, values_from=value) |>
+    mutate(sensornumber=1,
+           measurand=gsub("PM25", "PM2.5", measurand),
+           calibrationname="ratified",
+           location="Manchester")  # Only have 1 sensor per measurand
+# sensor
+dbAppendTable(con, "sensor", fidas_ceda |> distinct(instrument, measurand, sensornumber))
+# sensorcalibration
+dbAppendTable(con, "sensorcalibration", fidas_ceda |> group_by(instrument, measurand, sensornumber, calibrationname) |> summarise(dateapplied = min(time)))
+# measurement
+dbAppendTable(con, "measurement", fidas_ceda |> select(instrument, measurand, sensornumber, calibrationname, time, measurement))
+# flag
+dbAppendTable(con, "flag", fidas_ceda |> filter(flag != 1) |> select(instrument, measurand, sensornumber, calibrationname, time))
 
 ############ Device deployment history
 # Deployment start and finish datetimes are both inclusive, so 
