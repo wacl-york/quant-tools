@@ -16,6 +16,7 @@
 # TODO post-hoc:
 #    - Update data (notably PA)
 
+library(odbc)
 library(DBI)
 library(RPostgres)
 library(RSQLite)
@@ -29,11 +30,7 @@ quant_scraping_config <- jsonlite::fromJSON(quant_devices_fn)
 device_lut <- bind_rows(quant_scraping_config$manufacturers$devices)
 yesterday <- as.character(today() - days(1))
 
-con <- dbConnect(Postgres(), 
-                 host=Sys.getenv("QUANT_DB_HOST"), 
-                 dbname=Sys.getenv("QUANT_DB_DBNAME"),
-                 user=Sys.getenv("QUANT_DB_USER"),
-                 password=Sys.getenv("QUANT_DB_PASSWORD"))
+con <- dbConnect(odbc(), "QUANT")
 con_sqlite <- dbConnect(SQLite(), "~/Documents/quant_data/quant.db")
 
 # Load all saved data

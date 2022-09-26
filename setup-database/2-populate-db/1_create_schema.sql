@@ -122,31 +122,41 @@ CREATE TABLE Flag(
     FOREIGN KEY(Measurand) REFERENCES Measurand(Measurand)
 );
 
---ALTER TABLE LCSDevices
---ADD CONSTRAINT fk_lcsdevices_lcsmanufacturers
---    FOREIGN KEY(manufacturer_id) 
---    REFERENCES LCSManufacturers(manufacturer_id)
---    ON DELETE CASCADE;
-
-
--- User friendly views
---CREATE VIEW lcs AS
---    SELECT time, location_name AS location, manufacturer_name AS manufacturer, device_name AS device, version_name AS version, measurand_name AS species, measurement AS value 
---    FROM lcsmeasurements
---    INNER JOIN lcsdevices USING(device_id)
---    INNER JOIN lcsmanufacturers using (manufacturer_id)
---    INNER JOIN lcsmeasurementversions USING (version_id)
---    INNER JOIN measurands USING (measurand_id)
---    INNER JOIN lcsdeployments ON (lcsmeasurements.device_id = lcsdeployments.device_id AND lcsmeasurements.time >= lcsdeployments.start_time AND lcsmeasurements.time <= lcsdeployments.end_time)
---    INNER JOIN locations USING (location_id)
---;
---
---
---CREATE VIEW ref AS
---    SELECT time, location_name AS location, measurand_name AS species, measurement AS value FROM referencemeasurements
---    INNER JOIN locations USING (location_id)
---    INNER JOIN measurands USING (measurand_id)
---;
-
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA waclquant TO waclquant_edit;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA waclquant TO waclquant_read;
+
+-- LCS view contains the most recent availble calibration for each timepoint
+-- and only returns 1 sensor per measurand per instrument 
+-- i.e. PurpleAir will only return one PM2.5 sensor, despite 2 being on board
+-- It also adds the location of each measurement
+CREATE MATERIALIZED VIEW lcs AS
+SELECT t2.time, dep.location, t2.instrument, t2.measurand, t2.measurement
+FROM (
+    SELECT ROW_NUMBER() OVER(PARTITION BY lcs.instrument, lcs.measurand, lcs.sensornumber, lcs.time ORDER BY cal.dateapplied DESC) as rownum, 
+        lcs.instrument, lcs.measurand, lcs.sensornumber, lcs.time, lcs.measurement
+    FROM 
+        (
+            SELECT mes.time, mes.instrument, mes.calibrationname, mes.measurand, mes.measurement, mes.sensornumber
+            FROM lcsinstrument ins
+            INNER JOIN measurement mes USING(instrument)
+            WHERE mes.sensornumber = 1
+        ) lcs 
+    INNER JOIN sensorcalibration cal 
+    USING(instrument, measurand, sensornumber, calibrationname)
+    ) t2
+INNER JOIN deployment dep 
+    ON t2.instrument = dep.instrument 
+        AND t2.time BETWEEN dep.start AND dep.finish
+WHERE t2.rownum = 1;
+
+-- Reference view adds the location of each measurement and doesn't
+-- return the LGR CO measurements, preferring the Thermo instead
+CREATE MATERIALIZED VIEW ref AS
+SELECT mes.time, dep.location, mes.instrument, mes.measurand, mes.measurement
+FROM referenceinstrument ins
+INNER JOIN measurement mes USING(instrument)
+INNER JOIN deployment dep 
+    ON ins.instrument = dep.instrument AND
+    mes.time BETWEEN dep.start AND dep.finish
+WHERE mes.sensornumber = 1
+      AND (mes.instrument != 'LGR_Manchester' AND mes.measurand = 'CO');
