@@ -159,4 +159,4 @@ INNER JOIN deployment dep
     ON ins.instrument = dep.instrument AND
     mes.time BETWEEN dep.start AND dep.finish
 WHERE mes.sensornumber = 1
-      AND (mes.instrument != 'LGR_Manchester' AND mes.measurand = 'CO');
+      AND NOT (mes.instrument = 'LGR_Manchester' AND mes.measurand = 'CO');
