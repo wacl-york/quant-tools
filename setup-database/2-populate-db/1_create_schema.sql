@@ -158,5 +158,14 @@ INNER JOIN measurement mes USING(instrument)
 INNER JOIN deployment dep 
     ON ins.instrument = dep.instrument AND
     mes.time BETWEEN dep.start AND dep.finish
+LEFT JOIN (
+    SELECT *, 1 as flag FROM flag
+) flg
+    ON mes.instrument = flg.instrument 
+       AND mes.measurand = flg.measurand
+       AND mes.sensornumber = flg.sensornumber
+       AND mes.calibrationname = flg.calibrationname
+       AND mes.time = flg.time
 WHERE mes.sensornumber = 1
-      AND NOT (mes.instrument = 'LGR_Manchester' AND mes.measurand = 'CO');
+      AND NOT (mes.instrument = 'LGR_Manchester' AND mes.measurand = 'CO')
+      AND flg.flag IS NULL;
