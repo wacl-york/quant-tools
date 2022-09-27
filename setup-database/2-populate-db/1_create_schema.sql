@@ -152,7 +152,7 @@ WHERE t2.rownum = 1;
 -- Reference view adds the location of each measurement and doesn't
 -- return the LGR CO measurements, preferring the Thermo instead
 CREATE MATERIALIZED VIEW ref AS
-SELECT mes.time, dep.location, mes.instrument, mes.measurand, mes.measurement
+SELECT mes.time, dep.location, mes.measurand, mes.measurement
 FROM referenceinstrument ins
 INNER JOIN measurement mes USING(instrument)
 INNER JOIN deployment dep 
