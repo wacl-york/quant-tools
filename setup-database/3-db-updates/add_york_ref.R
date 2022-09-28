@@ -78,8 +78,8 @@ df_no2 <- df_no2 %>%
     ungroup()
 
 # NO2 and NO units need converting to ppb from mV
-df_no2$NO2 <- df_no2$NO2 * 1000
-df_no2$NO <- df_no2$NO * 1000
+df_no2$NO2 <- df_no2$NO2 * 100
+df_no2$NO <- df_no2$NO * 100
 
 ###### Combining streams
 # Combine datasets into 1 data frame
