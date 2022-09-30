@@ -25,12 +25,12 @@ DB_FN <- "/home/stuart/Documents/quant_data/quant.db"
 ld <- import("load_data")
 
 df_aurn <- ld$load_data(CLEAN_DIR,
-                          companies="AURN",
-                          subset=NULL,
-                          resample=NULL)
+                        companies="AURN",
+                        subset=NULL,
+                        resample=NULL)
 
 # Remove error codes and missing values
-df_aurn- df_aurn %>%
+df_aurn <- df_aurn %>%
     rename(PM25 = `PM2.5`) %>%
     mutate(PM10 = ifelse(PM10 == -99, NA, PM10),
            PM25 = ifelse(PM25 == -99, NA, PM25)) %>%
