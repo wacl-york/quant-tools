@@ -1,19 +1,14 @@
 -- 3_creates_indexes.sql
 -- ~~~~~~~~~~~~~~~~~~~~~
+--
+-- This script creates the indexes for the lcs and ref views, since 
+-- these are materialized views and thus do not use the indexes from their
+-- constituent tables.
 
--- Creates indexes on the 2 measurement tables (lcs_raw and ref_raw) to speed up queries
+CREATE INDEX idx_lcs_measurand_instrument_location_time ON lcs(measurand, instrument, time, location);
+CREATE INDEX idx_lcs_device ON lcs(instrument);
+CREATE INDEX idx_lcs_measurand ON lcs(measurand);
+CREATE INDEX idx_lcs_time ON lcs(time);
 
-CREATE INDEX timestamp_device_version_location_idx ON lcs_raw(timestamp, device, version, location);
-CREATE INDEX device_timestamp_version_location_idx ON lcs_raw(device, timestamp, version, location);
-CREATE INDEX version_device_timestamp_idx ON lcs_raw(version, device, timestamp);
-CREATE INDEX location_idx ON lcs_raw(location);
-
-CREATE INDEX timestamp_device_location_idx ON lcs_latest_raw(timestamp, device, location);
-CREATE INDEX device_timestamp_location_idx ON lcs_latest_raw(device, timestamp, location);
-CREATE INDEX location_latest_idx ON lcs_latest_raw(location);
-
-CREATE INDEX timestamp_device_idx ON lcs_wider_participation_raw(timestamp, device);
-CREATE INDEX device_idx ON lcs_wider_participation_raw(device);
-
-CREATE INDEX timestamp_location_idx ON ref_raw(timestamp, location);
-CREATE INDEX location_ref_idx ON ref_raw(location);
+CREATE INDEX idx_ref_measurand_location_time ON ref(measurand, time, location);
+CREATE INDEX idx_ref_time ON ref(time);

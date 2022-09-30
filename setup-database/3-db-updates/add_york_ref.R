@@ -25,12 +25,12 @@ DB_FN <- "/home/stuart/Documents/quant_data/quant.db"
 ld <- import("load_data")
 
 df_aurn <- ld$load_data(CLEAN_DIR,
-                          companies="AURN",
-                          subset=NULL,
-                          resample=NULL)
+                        companies="AURN",
+                        subset=NULL,
+                        resample=NULL)
 
 # Remove error codes and missing values
-df_aurn- df_aurn %>%
+df_aurn <- df_aurn %>%
     rename(PM25 = `PM2.5`) %>%
     mutate(PM10 = ifelse(PM10 == -99, NA, PM10),
            PM25 = ifelse(PM25 == -99, NA, PM25)) %>%
@@ -78,8 +78,8 @@ df_no2 <- df_no2 %>%
     ungroup()
 
 # NO2 and NO units need converting to ppb from mV
-df_no2$NO2 <- df_no2$NO2 * 1000
-df_no2$NO <- df_no2$NO * 1000
+df_no2$NO2 <- df_no2$NO2 * 100
+df_no2$NO <- df_no2$NO * 100
 
 ###### Combining streams
 # Combine datasets into 1 data frame

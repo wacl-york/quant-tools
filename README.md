@@ -3,6 +3,142 @@
 Tools for working with QUANT data, either directly from the CSV files or from the cleaned database.
 Example code is included for loading the data into Python and performing basic analysis.
 
+# Reading data from the database
+
+There is a Postgresql database with the QUANT data (both main study and Wider Participation study) along with relevant reference measurements.
+**NB: You must be on the [University Virtual Private Network (VPN)](https://www.york.ac.uk/it-services/services/vpn/) to access the database**
+The relevant connection details are:
+
+  - `host`: 'pgwaclquant'
+  - `database`: 'waclquant'
+  - `user`: 'waclquant_read'
+  - `password`: Ask Stuart if you do not have the password
+
+The data is stored in multiple tables that are all related to each other, however, a user friendly interface has been provided that should suit the majority of use cases which collates all the relevant fields into two tables: `lcs` and `ref`.
+
+`lcs` provides all low-cost sensor measurements using the most recent calibration method for each timepoint. I.e. if a calibration algorithm was retrospectively applied so that for some initial time-period there are both out-of-box and calibrated measurements available, this will show only the calibrations.
+It has fields:
+
+  - `time`: The timestamp of recording
+  - `location`: Where the instrument was located when it made the recording
+  - `instrument`: The instrument identifier
+  - `measurand`: The pollutant being measured
+  - `measurement`: The measurement value itself
+
+If you wish to access all calibration algorithms then use the `measurement` table as detailed below.
+
+`ref` contains reference data and has fields:
+
+  - `time`: The timestamp of recording
+  - `location`: Where the instrument was located when it made the recording
+  - `measurand`: The pollutant being measured
+  - `measurement`: The measurement value itself
+
+If you need further control, or wish to view all the related metadata, then the full list of tables is:
+
+  - `instrument`: A list of all the instruments in the study, where an instrument contains multiple sensors measuring different species
+  - `instrumenttype`: Instruments are classified as either LCS or Reference instruments
+  - `lcsinstrument`: List of LCS instruments
+  - `lcscompany`: List of LCS companies
+  - `referenceinstrument`: List of reference instruments. The actual instrument names for anything that isn't in Manchester is a dummy identifier as I did not have access to details of the instruments themselves
+  - `deployment`: A list of which instruments were deployed at what sites and when
+  - `sensor`: A list of all sensors that are housed in each unit. Each instrument can have multiple sensors for each pollutant
+  - `sensorcalibration`: A list of calibration versions for each sensor, so that e.g. for any point in time you can have more than one NO2 measurement from a given sensor, corresponding to different calibration routines
+  - `measurand`: A list of all the pollutants measured as part of the study and their units
+  - `measurement`: The main table comprising the measurements themselves
+  - `flag`: A list of all flagged data, currently implemented only for reference data
+
+## Access from Python
+
+In Python use the `psycopg2` package to connect to the Postgres DB, and then use the `pandas.read_sql` method to pull data directly into Pandas DataFrames.
+This requires writing SQL queries, have a look at [https://www.w3schools.com/sql/sql_where.asp](https://www.w3schools.com/sql/sql_where.asp) for possible WHERE filter conditions.
+
+```python
+import psycopg2 as pg
+import pandas as pg
+
+# Connect to the DB
+engine = pg.connect("dbname='waclquant' user='waclquant_read' host='pgwaclquant' password='PASSWORD'")
+
+# Use the pandas.read_sql() method to run queries on the DB.
+# Look at https://www.w3schools.com/sql/sql_where.asp for possible WHERE filter conditions
+df = pd.read_sql("SELECT * FROM lcs WHERE instrument IN ('AQM389', 'Zep309') AND measurand = 'O3' AND time > '2021-01-01' AND time < '2021-04-01'", engine)
+df
+```
+
+```python
+                      time location instrument measurand  measurement
+0      2021-01-01 03:15:00   London     AQM389        O3     12.44100
+1      2021-01-01 00:01:00   London     AQM389        O3     11.46300
+2      2021-01-01 00:02:00   London     AQM389        O3     11.63800
+3      2021-01-01 00:03:00   London     AQM389        O3     13.35300
+4      2021-01-01 00:04:00   London     AQM389        O3     11.07600
+...                    ...      ...        ...       ...          ...
+257531 2021-03-31 21:26:00     York     Zep309        O3      9.88709
+257532 2021-03-31 21:27:00     York     Zep309        O3     12.61380
+257533 2021-03-31 21:28:00     York     Zep309        O3      9.66161
+257534 2021-03-31 21:29:00     York     Zep309        O3      2.37594
+257535 2021-03-31 21:30:00     York     Zep309        O3      8.21266
+
+[257536 rows x 5 columns]
+```
+
+## Access from R
+
+I would recommend storing the connection details in your `~/.Renviron` file (see [here](https://support.rstudio.com/hc/en-us/articles/360047157094-Managing-R-with-Rprofile-Renviron-Rprofile-site-Renviron-site-rsession-conf-and-repos-conf) for more details) so that you can easily access them in your scripts as follows.
+
+```r
+library(tidyverse)
+library(DBI)
+library(RPostgres)
+
+con <- dbConnect(Postgres(), 
+                 host=Sys.getenv("QUANT_DB_HOST"), 
+                 dbname=Sys.getenv("QUANT_DB_DBNAME"),
+                 user=Sys.getenv("QUANT_DB_USER"),
+                 password=Sys.getenv("QUANT_DB_PASSWORD"))
+```
+
+You can then access the database and manipulate tables as if they are local data frames using the `dbplyr` package, but the measurements won't be downloaded until you use the `collect` function.
+
+```r
+# Obtains the latest calibrations for NO2 for Zep188
+# NB: This doesn't actually download the data from the DB
+tbl(con, "lcs") |>
+    filter(measurand == 'NO2', device == 'Zep188')
+```
+
+```r
+# Source:   SQL [?? x 5]
+# Database: postgres  [waclquant_edit@localhost:/waclquant]
+   time                location   instrument measurand measurement
+   <dttm>              <chr>      <chr>      <chr>           <dbl>
+ 1 2019-12-10 14:40:00 Manchester Zep188     NO2             162. 
+ 2 2019-12-10 14:41:00 Manchester Zep188     NO2              86.6
+ 3 2019-12-10 14:42:00 Manchester Zep188     NO2              53.9
+ 4 2019-12-10 14:43:00 Manchester Zep188     NO2              40.3
+ 5 2019-12-10 14:44:00 Manchester Zep188     NO2              36.9
+ 6 2019-12-10 14:45:00 Manchester Zep188     NO2              31.9
+ 7 2019-12-10 14:46:00 Manchester Zep188     NO2              29.0
+ 8 2019-12-10 14:47:00 Manchester Zep188     NO2              25.9
+ 9 2019-12-10 14:48:00 Manchester Zep188     NO2              24.2
+10 2019-12-10 14:49:00 Manchester Zep188     NO2              24.5
+# … with more rows
+# ℹ Use `print(n = ...)` to see more rows
+
+```
+
+```r
+# Pull the data with collect()
+df <- tbl(con, "lcs") |>
+    filter(measurand == 'NO2', device == 'Zep188') |>
+    select(time, location, instrument, NO2=measurement) |>
+    collect()
+```
+
+Setting up ODBC connections is very useful as it means you can connect to the database just with `con <- dbConnect(odbc::odbc(), "QUANT")`, where 'QUANT' is the name of a DSN.
+Configuring ODBC is beyond the scope of this document as it depends heavily upon Operating System.
+
 # Reading data from CSV
 
 ## Installation 
@@ -149,13 +285,6 @@ However, this has not been done to ensure backwards compatibility, although it m
 ## R implementation
 
 There is also an R version of `load_data`, found in `load_data.R`, with example usage shown in `example.R`.
-
-# Reading data from the database
-
-The database uses SQLite, which means that you need to download it as a file onto your local computer from Google Drive (it is 6GB in size).
-No new Python dependencies are required.
-
-To access the data using Python, see the example code in `example_db.py` for pointers.
 
 # Setting up the database
 
