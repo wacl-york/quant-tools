@@ -55,7 +55,7 @@ This requires writing SQL queries, have a look at [https://www.w3schools.com/sql
 
 ```python
 import psycopg2 as pg
-import pandas as pg
+import pandas as pd
 
 # Connect to the DB
 engine = pg.connect("dbname='waclquant' user='waclquant_read' host='pgwaclquant' password='PASSWORD'")
