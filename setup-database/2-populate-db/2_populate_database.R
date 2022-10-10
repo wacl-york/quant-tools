@@ -13,9 +13,6 @@
 #   - QUANT_DB_USER
 #   - QUANT_DB_PASSWORD
 
-# TODO post-hoc:
-#    - Update data (notably PA)
-
 library(odbc)
 library(DBI)
 library(RPostgres)
@@ -376,7 +373,9 @@ dbAppendTable(con, "measurement", thermo_ceda |> select(instrument, measurand, s
 dbAppendTable(con, "flag", thermo_ceda |> filter(flag != 1) |> select(instrument, measurand, sensornumber, calibrationname, time))
 
 ###### NO2
-teledyne_files <- list.files(sprintf("%s/teledyne_no2", ceda_dir), recursive = TRUE, full.names = TRUE, pattern="*.csv")
+teledyne_files <- list.files(sprintf("%s/OSCA_MAQS_Teledyne_T500U_NO2", ceda_dir), recursive = TRUE, full.names = TRUE, pattern="*.csv")
+teledyne_files <- teledyne_files[!grepl("oldfiles", teledyne_files)]
+
 instrument_name <- "TeledyneT500U_Manchester"
 teledyne_ceda <- map_dfr(teledyne_files, read_csv, show_col_types=FALSE) |>
   select(time=datetime,
@@ -389,7 +388,7 @@ teledyne_ceda <- map_dfr(teledyne_files, read_csv, show_col_types=FALSE) |>
                  names_pattern="(.+)_(.+)", names_to=c("measurand", "type")) |>
     pivot_wider(names_from=type, values_from=value) |>
     mutate(sensornumber=1,
-           calibrationname="ratified",
+           calibrationname="Unratified2.2",
            location="Manchester")  # Only have 1 sensor per measurand
 # instrument
 dbAppendTable(con, "instrument", teledyne_ceda |> distinct(instrument, instrumenttypeid))
@@ -510,7 +509,7 @@ dbAppendTable(con, "measurement", lgr_ceda |> select(instrument, measurand, sens
 dbAppendTable(con, "flag", lgr_ceda |> filter(flag != 1) |> select(instrument, measurand, sensornumber, calibrationname, time))
 
 ###### WS + WD
-sonic_files <- list.files(sprintf("%s/sonic_windmaster", ceda_dir), recursive = TRUE, full.names = TRUE, pattern="*.csv")
+sonic_files <- list.files(sprintf("%s/OSCA_MAQS_Sonic_Windmaster", ceda_dir), recursive = TRUE, full.names = TRUE, pattern="*.csv")
 instrument_name <- "Sonic_Manchester"
 sonic_ceda <- map_dfr(sonic_files, read_csv, show_col_types=FALSE) |>
   select(time=datetime,
@@ -525,7 +524,7 @@ sonic_ceda <- map_dfr(sonic_files, read_csv, show_col_types=FALSE) |>
                  names_pattern="(.+)_(.+)", names_to=c("measurand", "type")) |>
     pivot_wider(names_from=type, values_from=value) |>
     mutate(sensornumber=1,
-           calibrationname="ratified",
+           calibrationname="Ratified2.1",
            location="Manchester")  # Only have 1 sensor per measurand
 # instrument
 dbAppendTable(con, "instrument", sonic_ceda |> distinct(instrument, instrumenttypeid))
@@ -543,7 +542,7 @@ dbAppendTable(con, "measurement", sonic_ceda |> select(instrument, measurand, se
 dbAppendTable(con, "flag", sonic_ceda |> filter(flag != 1) |> select(instrument, measurand, sensornumber, calibrationname, time))
 
 ###### Temp + RH
-met_files <- list.files(sprintf("%s/fidas_met", ceda_dir), recursive = TRUE, full.names = TRUE, pattern="*.csv")
+met_files <- list.files(sprintf("%s/OSCA_Manc_FIDAS_Met", ceda_dir), recursive = TRUE, full.names = TRUE, pattern="*.csv")
 instrument_name <- "FIDAS_Manchester"
 met_ceda <- map_dfr(met_files, read_csv, show_col_types=FALSE) |>
   select(time=datetime,
@@ -561,7 +560,7 @@ met_ceda <- map_dfr(met_files, read_csv, show_col_types=FALSE) |>
                  names_pattern="(.+)_(.+)", names_to=c("measurand", "type")) |>
     pivot_wider(names_from=type, values_from=value) |>
     mutate(sensornumber=1,
-           calibrationname="ratified",
+           calibrationname="Ratified2.1",
            location="Manchester")  # Only have 1 sensor per measurand
 
 # instrument
@@ -601,7 +600,7 @@ fidas_ceda <- map_dfr(fidas_files, read_csv, show_col_types=FALSE) |>
     pivot_wider(names_from=type, values_from=value) |>
     mutate(sensornumber=1,
            measurand=gsub("PM25", "PM2.5", measurand),
-           calibrationname="ratified",
+           calibrationname="Ratified2.1",
            location="Manchester")  # Only have 1 sensor per measurand
 # sensor
 dbAppendTable(con, "sensor", fidas_ceda |> distinct(instrument, measurand, sensornumber))
