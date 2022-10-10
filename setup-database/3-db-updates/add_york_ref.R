@@ -52,13 +52,15 @@ df_o3 <- df_o3 %>%
 df_o3$timestamp <- floor_date(df_o3$timestamp, "1 min")
 df_o3 <- df_o3 %>%
     group_by(timestamp) %>%
-    summarise(O3 = mean(Ozone, na.rm=T)) %>%
+    summarise(O3 = mean(Ozone, na.rm=T),
+              Temperature = mean(Temp, na.rm=T),
+              Pressure = mean(Pressure, na.rm=T)) %>%
     ungroup()
 
 # Have manually checked and there are no outliers in the Ozone data
 
 ##### NO2
-df_no2 <- read_csv(paste0(gdrive_dir, "NOx/raw/19 Oct 2020_11 Mar 2022.csv"), skip = 3, col_names = c("timestamp", "time2", "NOxDiff", "NOx", "NO2", "NO"))
+df_no2 <- read_csv(paste0(gdrive_dir, "NOx/raw/19 Oct 2020_10 Aug 2022.csv"), skip = 3, col_names = c("timestamp", "time2", "NOxDiff", "NOx", "NO2", "NO"))
 # Parse into datetime
 df_no2 <- df_no2 %>%
     separate(timestamp, into=c("date", "time"), sep=" ") %>%
