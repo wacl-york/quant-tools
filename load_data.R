@@ -101,11 +101,11 @@ load_data <- function(folder,
     } else {
         fns <- c()
         if (!is.null(companies)) {
-            company_fns <- unname(unlist(sapply(companies, function(x) Sys.glob(sprintf("%s%s*.csv", folder, x)))))
+            company_fns <- unname(unlist(sapply(companies, function(x) Sys.glob(sprintf("%s/%s_*.csv", folder, x)))))
             fns <- c(fns, company_fns)
         }
         if (!is.null(devices)) {
-            device_fns <- unname(unlist(sapply(devices, function(x) Sys.glob(sprintf("%s*%s*.csv", folder, x)))))
+            device_fns <- unname(unlist(sapply(devices, function(x) Sys.glob(sprintf("%s/*_%s_*.csv", folder, x)))))
             fns <- c(fns, device_fns)
         }
     }
@@ -121,7 +121,7 @@ load_data <- function(folder,
     }
     
     if (length(fns) == 0) {
-        stop("No filenames found that match criteria.")
+        message("No filenames found that match criteria.")
         return(NULL)
     }
     
@@ -154,5 +154,10 @@ load_data <- function(folder,
     if (!is.null(subset))
         df_2 <- df_2[ measurand %in% subset ]
         
-    dcast(df_2, timestamp + manufacturer + device  ~ measurand)
+    if (nrow(df_2) > 0) {
+        out <- dcast(df_2, timestamp + manufacturer + device  ~ measurand)
+    } else {
+        out <- NULL
+    }
+    out
 }
