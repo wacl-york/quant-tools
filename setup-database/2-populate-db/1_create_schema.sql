@@ -130,10 +130,10 @@ GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA waclquant TO waclquant_read;
 -- i.e. PurpleAir will only return one PM2.5 sensor, despite 2 being on board
 -- It also adds the location of each measurement
 CREATE MATERIALIZED VIEW lcs AS
-SELECT t2.time, dep.location, t2.instrument, t2.measurand, t2.measurement
+SELECT t2.time, dep.location, t2.instrument, t2.calibrationname, t2.measurand, t2.measurement
 FROM (
     SELECT ROW_NUMBER() OVER(PARTITION BY lcs.instrument, lcs.measurand, lcs.sensornumber, lcs.time ORDER BY cal.dateapplied DESC) as rownum, 
-        lcs.instrument, lcs.measurand, lcs.sensornumber, lcs.time, lcs.measurement
+        lcs.instrument, lcs.measurand, lcs.sensornumber, lcs.time, lcs.measurement, lcs.calibrationname
     FROM 
         (
             SELECT mes.time, mes.instrument, mes.calibrationname, mes.measurand, mes.measurement, mes.sensornumber
@@ -143,6 +143,7 @@ FROM (
         ) lcs 
     INNER JOIN sensorcalibration cal 
     USING(instrument, measurand, sensornumber, calibrationname)
+    WHERE lcs.time >= cal.dateapplied
     ) t2
 INNER JOIN deployment dep 
     ON t2.instrument = dep.instrument 
