@@ -153,20 +153,30 @@ WHERE t2.rownum = 1;
 -- Reference view adds the location of each measurement and doesn't
 -- return the LGR CO measurements, preferring the Thermo instead
 CREATE MATERIALIZED VIEW ref AS
-SELECT mes.time, dep.location, mes.measurand, mes.measurement
-FROM referenceinstrument ins
-INNER JOIN measurement mes USING(instrument)
+SELECT t2.time, dep.location, t2.calibrationname as version, t2.measurand, t2.measurement
+FROM (
+    SELECT ROW_NUMBER() OVER(PARTITION BY ref.instrument, ref.measurand, ref.sensornumber, ref.time ORDER BY cal.dateapplied DESC) as rownum,
+        ref.instrument, ref.measurand, ref.sensornumber, ref.time, ref.measurement, ref.calibrationname
+    FROM
+        (
+            SELECT mes.time, mes.instrument, mes.calibrationname, mes.measurand, mes.measurement, mes.sensornumber
+            FROM referenceinstrument ins
+            INNER JOIN measurement mes USING(instrument)
+            WHERE mes.sensornumber = 1
+        ) ref
+    INNER JOIN sensorcalibration cal
+    USING(instrument, measurand, sensornumber, calibrationname)
+    ) t2
 INNER JOIN deployment dep 
-    ON ins.instrument = dep.instrument AND
-    mes.time BETWEEN dep.start AND dep.finish
+    ON t2.instrument = dep.instrument AND
+    t2.time BETWEEN dep.start AND dep.finish
 LEFT JOIN (
     SELECT *, 1 as flag FROM flag
 ) flg
-    ON mes.instrument = flg.instrument 
-       AND mes.measurand = flg.measurand
-       AND mes.sensornumber = flg.sensornumber
-       AND mes.calibrationname = flg.calibrationname
-       AND mes.time = flg.time
-WHERE mes.sensornumber = 1
-      AND NOT (mes.instrument = 'LGR_Manchester' AND mes.measurand = 'CO')
+    ON t2.instrument = flg.instrument
+       AND t2.measurand = flg.measurand
+       AND t2.sensornumber = flg.sensornumber
+       AND t2.calibrationname = flg.calibrationname
+       AND t2.time = flg.time
+WHERE NOT (t2.instrument = 'LGR_Manchester' AND t2.measurand = 'CO')
       AND flg.flag IS NULL;
