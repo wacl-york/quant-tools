@@ -100,7 +100,7 @@ CREATE TABLE Measurement(
     SensorNumber INTEGER,
     CalibrationName TEXT,
     Time TIMESTAMP,
-    Measurement REAL,
+    Measurement REAL NOT NULL,
     PRIMARY KEY (Instrument, Measurand, SensorNumber, CalibrationName, Time),
     FOREIGN KEY(Instrument, Measurand, SensorNumber, CalibrationName) REFERENCES SensorCalibration(Instrument, Measurand, SensorNumber, CalibrationName),
     FOREIGN KEY(Instrument, Measurand, SensorNumber) REFERENCES Sensor(Instrument, Measurand, SensorNumber),
