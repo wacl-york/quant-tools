@@ -111,7 +111,9 @@ update_gaps <- function(con) {
         inner_join(tbl(con, "lcsinstrument"), by="company") |>
         collect() |>
         ungroup() |>
-        filter(company != "RLS")
+        filter(company != "RLS",
+               company != "PurpleAir")  # Some PA files contain timestamps that don't match the files.
+                                        # Uploading these duplicate measurements causes confusion in the DB
     
     df_avail <- companies |>
         inner_join(df_avail, by="instrument") 
@@ -171,6 +173,7 @@ update_gaps <- function(con) {
             raw_df <- out
             df_long <- melt(raw_df, id.vars=c("timestamp", "manufacturer", "device"),
                             variable.name="measurand", value.name="measurement")
+            df_long <- df_long[ !is.na(measurement)]
             setnames(df_long, old=c("timestamp", "device"), new=c("time", "instrument"))
             df_long[, manufacturer := NULL]
             
@@ -200,7 +203,7 @@ update_gaps <- function(con) {
 }
 
 con <- dbConnect(odbc(), "QUANT")
-#update_chronologically(con)
+update_chronologically(con)
 update_gaps(con)
 
 dbDisconnect(con)
