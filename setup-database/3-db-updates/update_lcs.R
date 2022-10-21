@@ -19,7 +19,7 @@ update_chronologically <- function(con) {
         collect() |>
         ungroup() |>
         filter(instrument != "AQY875",  # AQY875 hasnt been running since 2021
-               instrument != "IMB1",    # Not sure why saying IMB1 has no data
+               instrument != "IMB1",    # IMB1 hasn't working since March 2022
                company != "PurpleAir",  # PurpleAir hasn't updated from SIM card 
                company != "RLS")        # RLS hasn't had any data
     
@@ -57,13 +57,20 @@ update_chronologically <- function(con) {
                         variable.name="measurand", value.name="measurement")
         setnames(df_long, old=c("timestamp", "device"), new=c("time", "instrument"))
         df_long[, manufacturer := NULL]
+        
+        if (companies$company[i] == 'Bosch') {
+            measurands <- c(measurands, "NO2_1", "NO2_2", "NO2_3")
+        }
         df_long <- df_long[ measurand %in% measurands]
+        
         # Add sensor number
         if (companies$company[i] %in% c("Bosch", "PurpleAir")) {
             if (companies$company[i] == "Bosch") {
-                df_long[, sensornumber := ifelse(grepl("_c$", instrument), 3, ifelse(grepl("_b$", instrument), 2, 1))]
-                df_long[, instrument := gsub("_b$", "", instrument)]
-                df_long[, instrument := gsub("_c$", "", instrument)]
+                sensornumber_search <- str_match(df_long$measurand, "([[:alnum:].]+)_?([1-3]?)")
+                sensor <- sensornumber_search[, 3]
+                sensor <- as.numeric(ifelse(sensor == '', 1, sensor))
+                df_long[, measurand := sensornumber_search[, 2] ]
+                df_long[, sensornumber := sensor]
             } else if (companies$company[i] == "PurpleAir") {
                 df_long[, sensornumber := ifelse(grepl("_b$", instrument), 2, 1)]
                 df_long[, instrument := gsub("_b$", "", instrument)]
@@ -93,6 +100,7 @@ update_chronologically <- function(con) {
         }
         
         setcolorder(df_long, c("instrument", "measurand", "sensornumber", "calibrationname", "time", "measurement"))
+        df_long <- df_long[ !is.na(measurement)]
         
         dbAppendTable(con, "measurement", df_long)
     }
@@ -180,9 +188,11 @@ update_gaps <- function(con) {
             # Add sensor number
             if (company %in% c("Bosch", "PurpleAir")) {
                 if (company == "Bosch") {
-                    df_long[, sensornumber := ifelse(grepl("_c$", instrument), 3, ifelse(grepl("_b$", instrument), 2, 1))]
-                    df_long[, instrument := gsub("_b$", "", instrument)]
-                    df_long[, instrument := gsub("_c$", "", instrument)]
+                    sensornumber_search <- str_match(df_long$measurand, "([[:alnum:].]+)_?([1-3]?)")
+                    sensor <- sensornumber_search[, 3]
+                    sensor <- as.numeric(ifelse(sensor == '', 1, sensor))
+                    df_long[, measurand := sensornumber_search[, 2] ]
+                    df_long[, sensornumber := sensor]
                 } else if (company == "PurpleAir") {
                     df_long[, sensornumber := ifelse(grepl("_b$", instrument), 2, 1)]
                     df_long[, instrument := gsub("_b$", "", instrument)]
