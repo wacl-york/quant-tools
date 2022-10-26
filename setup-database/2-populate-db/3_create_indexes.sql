@@ -6,7 +6,7 @@
 -- constituent tables.
 
 CREATE INDEX idx_lcs_measurand_instrument_location_time ON lcs(measurand, instrument, time, location);
-CREATE INDEX idx_lcs_device ON lcs(instrument);
+CREATE INDEX idx_lcs_instrument ON lcs(instrument);
 CREATE INDEX idx_lcs_measurand ON lcs(measurand);
 CREATE INDEX idx_lcs_time ON lcs(time);
 
