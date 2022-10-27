@@ -149,23 +149,23 @@ update_gaps <- function(con) {
             left_join(df_avail |> filter(instrument == inst), by=c("date", "measurand")) |>
             filter(is.na(avail))
         
-        # Insert "Unknown" calibrationname which will use when uploading data from
+        # Insert "Rescraped" calibrationname which will use when uploading data from
         # these gaps so I can manually specify which cal it is (too may factors to automate)
-        unknown_cals_in_df <- tbl(con, "sensorcalibration") |>
-            filter(instrument == inst, calibrationname == "Unknown") |>
+        rescraped_cals_in_df <- tbl(con, "sensorcalibration") |>
+            filter(instrument == inst, calibrationname == "Rescraped") |>
             collect()
-        if (nrow(unknown_cals_in_df) == 0) {
-            unknown_cals <- tbl(con, "sensorcalibration") |> 
+        if (nrow(rescraped_cals_in_df) == 0) {
+            rescraped_cals <- tbl(con, "sensorcalibration") |>
                     filter(instrument == inst) |> 
                     collect() |> 
                     distinct(instrument, measurand, sensornumber) |>
-                    mutate(calibrationname = "Unknown", 
+                    mutate(calibrationname = "Rescraped",
                            dateapplied = as_date("2000-01-01"))
-            dbAppendTable(con, "sensorcalibration", unknown_cals)
+            dbAppendTable(con, "sensorcalibration", rescraped_cals)
         }
         
         # For each date of missing data, attempt to load measurements from Google Drive
-        # And upload to DB using the Unknown calibrationname
+        # And upload to DB using the Rescraped calibrationname
         for (this_date_num in unique(this_df$date)) {
             this_date <- as_date(this_date_num)
             cat(sprintf("On date %s\n", this_date))
@@ -177,6 +177,11 @@ update_gaps <- function(con) {
                              start=this_date, end=this_date, subset=measurands)
             if (is.null(out)) next
             
+            # Had some shenaningans with PurpleAir having wrong date in filename
+            out <- out |>
+                    filter(as_date(timestamp) == this_date)
+            if (nrow(out) == 0) next
+
             # Convert dataframe to format for measurands table
             raw_df <- out
             df_long <- melt(raw_df, id.vars=c("timestamp", "manufacturer", "device"),
@@ -202,7 +207,7 @@ update_gaps <- function(con) {
             }
             
             # Add calibration name in, will manually go through and update later
-            df_long[, calibrationname := "Unknown"]
+            df_long[, calibrationname := "Rescraped"]
             
             # Upload! Annoyingly can't error handle
             setcolorder(df_long, c("instrument", "measurand", "sensornumber", "calibrationname", "time", "measurement"))
