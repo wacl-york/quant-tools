@@ -1,7 +1,7 @@
 # Insert new LCS measurements into the DB
 #
 # update_chronologically() looks for the latest date with data in the DB
-#  for each company and attempts to insert any more recent data from the
+#  for each instrument and attempts to insert any more recent data from the
 #  Google Drive folder in bulk.
 #
 # update_gaps() finds any days with no data available for every
@@ -20,83 +20,120 @@ update_chronologically <- function(con) {
         ungroup() |>
         filter(instrument != "AQY875",  # AQY875 hasnt been running since 2021
                instrument != "IMB1",    # IMB1 hasn't working since March 2022
-               company != "PurpleAir",  # PurpleAir hasn't updated from SIM card 
                company != "RLS")        # RLS hasn't had any data
     
     latest_lcs <- tbl(con, "lcsinstrument") |>
         left_join(tbl(con, "measurement"), by="instrument") |>
         group_by(instrument) |>
-        summarise(latest_date = max(time)) |>
+        summarise(latest_date = as_date(max(time))) |>
         collect() |>
-        ungroup() |>
-        filter(latest_date < as_date("2022-10-01"))
-    
-    companies <- companies |>
-        inner_join(latest_lcs, by="instrument") |>
-        group_by(company, study) |>
-        summarise(latest_date = max(as_date(latest_date), na.rm=T)) |>
         ungroup()
     
+    latest_lcs <- latest_lcs |>
+        inner_join(companies, by="instrument")
+    
     local_folder <- tibble(study=c("QUANT", "Wider Participation"), folder=c("~/Documents/quant_data/Clean/", "~/Documents/quant_data/Clean_wider/"))
-    companies <- companies |> inner_join(local_folder, by="study")  
+    latest_lcs <- latest_lcs |> inner_join(local_folder, by="study")
     
     measurands <- tbl(con, "measurand") |>
                     collect() |>
                     pull(measurand)
     
-    
-    for (i in 1:nrow(companies)) {
-        cat(sprintf("On company %s: %d/%d (%.2f%%)\n", companies$company[i], i, nrow(companies), i/nrow(companies)*100))
+    for (i in 1:nrow(latest_lcs)) {
+        cat(sprintf("On instrument %s: %d/%d (%.2f%%)\n", latest_lcs$instrument[i], i, nrow(latest_lcs), i/nrow(latest_lcs)*100))
         
         # Get all data more recent than the latest date from the Google Drive folder
-        df <- load_data(companies$folder[i], 
-                        companies=companies$company[i], 
-                        start=companies$latest_date[i] + 1,  # Get data from the following day
+        df <- load_data(latest_lcs$folder[i],
+                        device=latest_lcs$instrument[i],
+                        start=latest_lcs$latest_date[i] + 1,  # Get data from the following day
                         subset=NULL)
+
+        if (is.null(df) || nrow(df) == 0) next
+        
         df_long <- melt(df, id.vars=c("timestamp", "manufacturer", "device"),
                         variable.name="measurand", value.name="measurement")
         setnames(df_long, old=c("timestamp", "device"), new=c("time", "instrument"))
         df_long[, manufacturer := NULL]
         
-        if (companies$company[i] == 'Bosch') {
+        if (latest_lcs$company[i] == 'Bosch') {
             measurands <- c(measurands, "NO2_1", "NO2_2", "NO2_3")
+        } else if (latest_lcs$company[i] == 'Aeroqual') {
+            measurands <- c(measurands, 'NO2_cal', 'O3_cal', 'PM10_cal', 'PM2.5 cal')
+        } else if (latest_lcs$company[i] == 'PurpleAir') {
+            measurands <- c(measurands,
+                            "PM1_atm",
+                            "PM1_atm_b",
+                            "PM2.5_atm",
+                            "PM2.5_atm_b",
+                            "PM10_atm",
+                            "PM10_atm_b",
+                            "PM1_cf",
+                            "PM1_cf_b",
+                            "PM2.5_cf",
+                            "PM2.5_cf_b",
+                            "PM10_cf",
+                            "PM10_cf_b"
+                            )
         }
+        
         df_long <- df_long[ measurand %in% measurands]
         
         # Add sensor number
-        if (companies$company[i] %in% c("Bosch", "PurpleAir")) {
-            if (companies$company[i] == "Bosch") {
+        if (latest_lcs$company[i] %in% c("Bosch", "PurpleAir")) {
+            if (latest_lcs$company[i] == "Bosch") {
                 sensornumber_search <- str_match(df_long$measurand, "([[:alnum:].]+)_?([1-3]?)")
                 sensor <- sensornumber_search[, 3]
                 sensor <- as.numeric(ifelse(sensor == '', 1, sensor))
                 df_long[, measurand := sensornumber_search[, 2] ]
                 df_long[, sensornumber := sensor]
-            } else if (companies$company[i] == "PurpleAir") {
-                df_long[, sensornumber := ifelse(grepl("_b$", instrument), 2, 1)]
-                df_long[, instrument := gsub("_b$", "", instrument)]
+            } else if (latest_lcs$company[i] == "PurpleAir") {
+                df_long[, sensornumber := ifelse(grepl("_b$", measurand), 2, 1)]
             }
         } else {
             df_long[, sensornumber := 1]
         }
         
-        # Get latest calibration models for each measurand
-        latest_cal_product <- tbl(con, "lcsinstrument") |>
-            filter(company == local(companies$company[i])) |>
-            inner_join(tbl(con, "sensorcalibration"), by="instrument") |>
-            group_by(instrument, sensornumber, measurand) |>
-            filter(dateapplied == max(dateapplied, na.rm=T)) |>
-            ungroup() |>
-            select(instrument, sensornumber, measurand, calibrationname) |>
-            collect() |>
-            as.data.table()
-        
-        # Add latest cal product name into data
-        df_long <- latest_cal_product[df_long, on=.(instrument, measurand, sensornumber)]
-        missing_cals <- df_long[is.na(calibrationname), ]
-        if (nrow(missing_cals) > 0) {
-            to_display <- missing_cals |> distinct(instrument, measurand)
-            cat(sprintf("Couldn't find some calibration names for %s\n", to_display))
-            next
+        # Add calibrationnames, can hardcode this for PurpleAir
+        if (latest_lcs$company[i] == "PurpleAir") {
+            df_long[, calibrationname := 'out-of-box']
+            df_long[ grepl("_atm", measurand), calibrationname := 'atmospheric' ]
+            df_long[ grepl("_cf", measurand), calibrationname := 'indoor' ]
+            df_long[, measurand := gsub('_.+', '', measurand) ]
+        } else {
+            # Get latest calibration models for each measurand
+            latest_cal_product <- tbl(con, "lcsinstrument") |>
+                filter(company == local(latest_lcs$company[i])) |>
+                inner_join(tbl(con, "sensorcalibration"), by="instrument")
+            
+            # Don't automatically add new product, will need to sort this manually later
+            # If don't remove it from list it will overwrite the cal2 version for the
+            # 'old product' sensors
+            if (latest_lcs$company[i] == 'Aeroqual') {
+                latest_cal_product <- latest_cal_product |>
+                    filter(calibrationname != 'new product')
+            }
+            
+            latest_cal_product <- latest_cal_product |>
+                group_by(instrument, sensornumber, measurand) |>
+                filter(dateapplied == max(dateapplied, na.rm=T)) |>
+                ungroup() |>
+                select(instrument, sensornumber, measurand, calibrationname) |>
+                collect() |>
+                as.data.table()
+            df_long <- latest_cal_product[df_long, on=.(instrument, measurand, sensornumber)]
+            
+            # Now in the new cal product calibration for Aeroqual
+            if (latest_lcs$company[i] == 'Aeroqual') {
+                df_long[grepl("[_ ]cal", measurand), calibrationname := 'new product']
+                df_long[, measurand := gsub('[_ ]cal', '', measurand) ]
+            }
+            
+            missing_cals <- df_long[is.na(calibrationname), ]
+            if (nrow(missing_cals) > 0) {
+                to_display <- missing_cals |> distinct(instrument, measurand)
+                cat(sprintf("Couldn't find some calibration names for %s\n", to_display))
+                next
+            }
         }
         
         setcolorder(df_long, c("instrument", "measurand", "sensornumber", "calibrationname", "time", "measurement"))

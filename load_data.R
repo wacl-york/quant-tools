@@ -26,7 +26,7 @@ get_date_from_filename <- function(filename) {
     date_str <- fn_split[3]
 
     # Parse date from string. Returns NA if parse failed
-    dt <- lubridate::as_date(date_str, format="%Y-%m-%d")
+    dt <- lubridate::as_date(date_str)
     dt
 }
 
@@ -112,11 +112,11 @@ load_data <- function(folder,
     
     # Subset to dates of interest
     if (!is.null(start)) {
-        start_dt <- lubridate::as_date(start, format="%Y-%m-%d")
+        start_dt <- lubridate::as_date(start)
         fns <- fns[sapply(fns, get_date_from_filename) >= start_dt]
     }
     if (!is.null(end)) {
-        end_dt <- lubridate::as_date(end, format="%Y-%m-%d")
+        end_dt <- lubridate::as_date(end)
         fns <- fns[sapply(fns, get_date_from_filename) <= end_dt]
     }
     
