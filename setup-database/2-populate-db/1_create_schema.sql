@@ -21,6 +21,7 @@ DROP TABLE IF EXISTS Measurand CASCADE;
 DROP TABLE IF EXISTS SensorCalibration CASCADE;
 DROP TABLE IF EXISTS Measurement CASCADE;
 DROP TABLE IF EXISTS Flag CASCADE;
+DROP TABLE IF EXISTS FlagTypes CASCADE;
 DROP VIEW IF EXISTS lcs;
 DROP VIEW IF EXISTS ref;
 
@@ -108,18 +109,30 @@ CREATE TABLE Measurement(
     FOREIGN KEY(Measurand) REFERENCES Measurand(Measurand)
 );
 
+CREATE TABLE FlagTypes(
+    FlagType TEXT,
+    DESCRIPTION TEXT,
+    PRIMARY KEY (FlagType)
+);
+
+INSERT INTO FlagTypes(FlagType, Description) VALUES('Error', 'Discard this measurement');
+INSERT INTO FlagTypes(FlagType, Description) VALUES('Warning', 'Treat this measurement with caution');
+
 CREATE TABLE Flag(
     Instrument TEXT,
     Measurand TEXT,
     SensorNumber INTEGER,
     CalibrationName TEXT,
     Time TIMESTAMP,
+    Reason TEXT,
+    FlagType TEXT,
     PRIMARY KEY (Instrument, Measurand, SensorNumber, CalibrationName, Time),
     FOREIGN KEY(Instrument, Measurand, SensorNumber, CalibrationName, Time) REFERENCES Measurement(Instrument, Measurand, SensorNumber, CalibrationName, Time),
     FOREIGN KEY(Instrument, Measurand, SensorNumber, CalibrationName) REFERENCES SensorCalibration(Instrument, Measurand, SensorNumber, CalibrationName),
     FOREIGN KEY(Instrument, Measurand, SensorNumber) REFERENCES Sensor(Instrument, Measurand, SensorNumber),
     FOREIGN KEY(Instrument) REFERENCES Instrument(Instrument),
-    FOREIGN KEY(Measurand) REFERENCES Measurand(Measurand)
+    FOREIGN KEY(Measurand) REFERENCES Measurand(Measurand),
+    FOREIGN KEY(FlagType) REFERENCES FlagTypes(FlagType)
 );
 
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA waclquant TO waclquant_edit;
