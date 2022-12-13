@@ -23,9 +23,10 @@ update_chronologically <- function(con) {
                company != "RLS")        # RLS hasn't had any data
     
     latest_lcs <- tbl(con, "lcsinstrument") |>
+        filter(instrument %in% local(companies[['instrument']])) |>
         left_join(tbl(con, "measurement"), by="instrument") |>
         group_by(instrument) |>
-        summarise(latest_date = as_date(max(time))) |>
+        summarise(latest_date = max(floor_date(time, "day"))) |>
         collect() |>
         ungroup()
     
@@ -45,7 +46,7 @@ update_chronologically <- function(con) {
         # Get all data more recent than the latest date from the Google Drive folder
         df <- load_data(latest_lcs$folder[i],
                         device=latest_lcs$instrument[i],
-                        start=latest_lcs$latest_date[i] + 1,  # Get data from the following day
+                        start=as_date(latest_lcs$latest_date[i])+1,  # Get data from the following day
                         subset=NULL)
 
         if (is.null(df) || nrow(df) == 0) next
@@ -143,6 +144,28 @@ update_chronologically <- function(con) {
     }
 }
 
+replace_purpleair_measurands <- function(x, measurand) {
+    if (! measurand %in% x) {
+        return(x)
+    }
+    
+    x <- setdiff(x, measurand)
+    new_cals <- paste0(measurand, c("_atm", "_atm_b",
+                                    "_cf", "_cf_b"))
+    c(x, new_cals)
+}
+            
+replace_aeroqual_measurands <- function(x, measurand) {
+    if (! measurand %in% x) {
+        return(x)
+    }
+    
+    x <- setdiff(x, measurand)
+    delim <- if (measurand == 'PM2.5') ' ' else '_'
+    new_cals <- paste(measurand, "cal", sep=delim)
+    c(x, new_cals)
+}
+
 update_gaps <- function(con) {
     # Find all days with at least one measurement per instrument/measurand combo
     df_avail <- tbl(con, "lcsinstrument") |>
@@ -156,9 +179,7 @@ update_gaps <- function(con) {
         inner_join(tbl(con, "lcsinstrument"), by="company") |>
         collect() |>
         ungroup() |>
-        filter(company != "RLS",
-               company != "PurpleAir")  # Some PA files contain timestamps that don't match the files.
-                                        # Uploading these duplicate measurements causes confusion in the DB
+        filter(company != "RLS")
     
     df_avail <- companies |>
         inner_join(df_avail, by="instrument") 
@@ -188,17 +209,21 @@ update_gaps <- function(con) {
         
         # Insert "Rescraped" calibrationname which will use when uploading data from
         # these gaps so I can manually specify which cal it is (too may factors to automate)
-        rescraped_cals_in_df <- tbl(con, "sensorcalibration") |>
-            filter(instrument == inst, calibrationname == "Rescraped") |>
-            collect()
-        if (nrow(rescraped_cals_in_df) == 0) {
-            rescraped_cals <- tbl(con, "sensorcalibration") |>
-                    filter(instrument == inst) |> 
-                    collect() |> 
-                    distinct(instrument, measurand, sensornumber) |>
-                    mutate(calibrationname = "Rescraped",
-                           dateapplied = as_date("2000-01-01"))
-            dbAppendTable(con, "sensorcalibration", rescraped_cals)
+        # Only PurpleAir don't update their cals OTA so can safely use the standard
+        # calibration names   
+        if (company != 'PurpleAir') {
+            rescraped_cals_in_df <- tbl(con, "sensorcalibration") |>
+                filter(instrument == inst, calibrationname == "Rescraped") |>
+                collect()
+            if (nrow(rescraped_cals_in_df) == 0) {
+                rescraped_cals <- tbl(con, "sensorcalibration") |>
+                        filter(instrument == inst) |> 
+                        collect() |> 
+                        distinct(instrument, measurand, sensornumber) |>
+                        mutate(calibrationname = "Rescraped",
+                               dateapplied = as_date("2000-01-01"))
+                dbAppendTable(con, "sensorcalibration", rescraped_cals)
+            }
         }
         
         # For each date of missing data, attempt to load measurements from Google Drive
@@ -210,6 +235,23 @@ update_gaps <- function(con) {
                 filter(date == this_date) |>
                 distinct(measurand) |>
                 pull(measurand)
+            
+            # Several companies have calibration or sensor numbers encoded in 
+            # the measurand name
+            if (company == 'PurpleAir') {
+                measurands <- replace_purpleair_measurands(measurands, "PM1")
+                measurands <- replace_purpleair_measurands(measurands, "PM10")
+                measurands <- replace_purpleair_measurands(measurands, "PM2.5")
+            } else if (company == 'Bosch') {
+                if ("NO2" %in% measurands) {
+                    measurands <- setdiff(c(measurands, 'NO2_1', 'NO2_2', 'NO2_3'), 'NO2')
+                }
+            } else if (company == 'Aeroqual') {
+                measurands <- replace_aeroqual_measurands(measurands, "NO2")
+                measurands <- replace_aeroqual_measurands(measurands, "O3")
+                measurands <- replace_aeroqual_measurands(measurands, "PM10")
+                measurands <- replace_aeroqual_measurands(measurands, "PM2.5")
+            }
             out <- load_data(dir, devices=inst,
                              start=this_date, end=this_date, subset=measurands)
             if (is.null(out)) next
@@ -236,15 +278,28 @@ update_gaps <- function(con) {
                     df_long[, measurand := sensornumber_search[, 2] ]
                     df_long[, sensornumber := sensor]
                 } else if (company == "PurpleAir") {
-                    df_long[, sensornumber := ifelse(grepl("_b$", instrument), 2, 1)]
-                    df_long[, instrument := gsub("_b$", "", instrument)]
-                }
+                    df_long[, sensornumber := ifelse(grepl("_b$", measurand), 2, 1)]
+                } 
             } else {
                 df_long[, sensornumber := 1]
             }
             
             # Add calibration name in, will manually go through and update later
-            df_long[, calibrationname := "Rescraped"]
+            if (company == "PurpleAir") {
+                df_long[, calibrationname := 'out-of-box']
+                df_long[ grepl("_atm", measurand), calibrationname := 'atmospheric' ]
+                df_long[ grepl("_cf", measurand), calibrationname := 'indoor' ]
+                df_long[, measurand := gsub('_.+', '', measurand) ]
+            } else if (company == "Aeroqual") {
+                # Although yes technically rescraping MOMA here, by using the calibrationname
+                # field to encode that a measurement was rescraped I cannot have duplicate
+                # measurements from different cal versions that are rescraped
+                df_long[, calibrationname := 'Rescraped' ]
+                df_long[ grepl("cal", measurand), calibrationname := 'MOMA' ]
+                df_long[, measurand := gsub('[_ ]cal', '', measurand) ]
+            } else {
+                df_long[, calibrationname := "Rescraped"]
+            }
             
             # Upload! Annoyingly can't error handle
             setcolorder(df_long, c("instrument", "measurand", "sensornumber", "calibrationname", "time", "measurement"))
