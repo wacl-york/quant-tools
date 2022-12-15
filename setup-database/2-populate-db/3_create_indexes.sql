@@ -11,5 +11,11 @@ CREATE INDEX idx_lcs_version ON lcs(version);
 CREATE INDEX idx_lcs_measurand ON lcs(measurand);
 CREATE INDEX idx_lcs_time ON lcs(time);
 
+CREATE INDEX idx_lcs_hourly_measurand_instrument_location_time ON lcs_hourly(measurand, instrument, version, time, location);
+CREATE INDEX idx_lcs_hourly_instrument ON lcs_hourly(instrument);
+CREATE INDEX idx_lcs_hourly_version ON lcs_hourly(version);
+CREATE INDEX idx_lcs_hourly_measurand ON lcs_hourly(measurand);
+CREATE INDEX idx_lcs_hourly_time ON lcs_hourly(time);
+
 CREATE INDEX idx_ref_measurand_location_time ON ref(measurand, time, location);
 CREATE INDEX idx_ref_time ON ref(time);

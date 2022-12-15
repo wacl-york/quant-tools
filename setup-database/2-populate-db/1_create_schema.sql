@@ -24,6 +24,7 @@ DROP TABLE IF EXISTS Flag CASCADE;
 DROP TABLE IF EXISTS FlagTypes CASCADE;
 DROP MATERIALIZED VIEW IF EXISTS lcs;
 DROP MATERIALIZED VIEW IF EXISTS ref;
+DROP MATERIALIZED VIEW IF EXISTS lcs_hourly;
 
 CREATE TABLE InstrumentType (
     InstrumentTypeID INTEGER PRIMARY KEY,
@@ -164,6 +165,24 @@ LEFT JOIN flag
        AND mes.calibrationname = flag.calibrationname
        AND mes.time = flag.time;
 
+CREATE MATERIALIZED VIEW lcs_hourly AS
+SELECT DATE_TRUNC('hour', time) as time,
+       location,
+       instrument,
+       sensornumber,
+       calibrationname as version,
+       measurand,
+       AVG(measurement) as measurement,
+       STRING_AGG(DISTINCT(flag), ',') as flag,
+       STRING_AGG(DISTINCT(flagreason), ',') as flagreason
+FROM lcs
+GROUP BY
+    DATE_TRUNC('hour', time),
+    location,
+    instrument,
+    sensornumber,
+    version,
+    measurand;
 
 -- Reference view adds the location of each measurement and doesn't
 -- return the LGR CO measurements, preferring the Thermo instead
