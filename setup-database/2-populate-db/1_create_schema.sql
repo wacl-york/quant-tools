@@ -22,8 +22,8 @@ DROP TABLE IF EXISTS SensorCalibration CASCADE;
 DROP TABLE IF EXISTS Measurement CASCADE;
 DROP TABLE IF EXISTS Flag CASCADE;
 DROP TABLE IF EXISTS FlagTypes CASCADE;
-DROP VIEW IF EXISTS lcs;
-DROP VIEW IF EXISTS ref;
+DROP MATERIALIZED VIEW IF EXISTS lcs;
+DROP MATERIALIZED VIEW IF EXISTS ref;
 
 CREATE TABLE InstrumentType (
     InstrumentTypeID INTEGER PRIMARY KEY,
@@ -143,7 +143,15 @@ GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA waclquant TO waclquant_read;
 -- i.e. PurpleAir will only return one PM2.5 sensor, despite 2 being on board
 -- It also adds the location of each measurement
 CREATE MATERIALIZED VIEW lcs AS
-SELECT mes.time, dep.location, mes.instrument, mes.sensornumber, mes.calibrationname as version, mes.measurand, mes.measurement, flag.reason as flag
+SELECT mes.time,
+       dep.location,
+       mes.instrument,
+       mes.sensornumber,
+       mes.calibrationname as version,
+       mes.measurand,
+       mes.measurement,
+       flag.flagtype as flag,
+       flag.reason as flagreason
 FROM lcsinstrument ins
 INNER JOIN measurement mes USING(instrument)
 INNER JOIN deployment dep 
@@ -155,32 +163,6 @@ LEFT JOIN flag
        AND mes.sensornumber = flag.sensornumber
        AND mes.calibrationname = flag.calibrationname
        AND mes.time = flag.time;
-
-CREATE MATERIALIZED VIEW lcs_latest AS
-SELECT t2.time, dep.location, t2.instrument, t2.sensornumber, t2.calibrationname as version, t2.measurand, t2.measurement, flag.reason as flag
-FROM (
-    SELECT ROW_NUMBER() OVER(PARTITION BY lcs.instrument, lcs.measurand, lcs.sensornumber, lcs.time ORDER BY cal.dateapplied DESC) as rownum, 
-        lcs.instrument, lcs.measurand, lcs.sensornumber, lcs.time, lcs.measurement, lcs.calibrationname
-    FROM 
-        (
-            SELECT mes.time, mes.instrument, mes.calibrationname, mes.measurand, mes.measurement, mes.sensornumber
-            FROM lcsinstrument ins
-            INNER JOIN measurement mes USING(instrument)
-        ) lcs 
-    INNER JOIN sensorcalibration cal 
-    USING(instrument, measurand, sensornumber, calibrationname)
-    WHERE lcs.time >= cal.dateapplied
-    ) t2
-INNER JOIN deployment dep 
-    ON t2.instrument = dep.instrument 
-        AND t2.time BETWEEN dep.start AND dep.finish
-LEFT JOIN flag
-    ON t2.instrument = flag.instrument
-       AND t2.measurand = flag.measurand
-       AND t2.sensornumber = flag.sensornumber
-       AND t2.calibrationname = flag.calibrationname
-       AND t2.time = flag.time
-WHERE t2.rownum = 1;
 
 
 -- Reference view adds the location of each measurement and doesn't
