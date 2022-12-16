@@ -22,15 +22,22 @@ It has fields:
   - `time`: The timestamp of recording
   - `location`: Where the instrument was located when it made the recording
   - `instrument`: The instrument identifier
+  - `sensornumber`: Some devices have had multiple sensors measuring the same gas either at the same time, or have had their sensors replaced. This field specifies which sensor number for that gas gave the measurement. It is currently used by PurpleAir and Bosch with their multiple sensors of the same gases, but will be also used to indicate when a sensor was replaced.
+  - `version`: The calibration version of this measurement
   - `measurand`: The pollutant being measured
   - `measurement`: The measurement value itself
+  - `flag`: Any associated flag with this measurement. Only currently used by AQMesh/Environmental Instruments and Kunak. This field has 3 possible values: `Error`, `Warning`, and `Info`. **Errors should be discarded**, Warnings may be removed depending on the situation, and Info provides some context.
+  - `flagreason`: A text description of why a flag was raised for this measurement.
 
 If you wish to access all calibration algorithms then use the `measurement` table as detailed below.
 
-`ref` contains reference data and has fields:
+`ref` contains reference data and has the following fields.
+**NB: flagged measurements have been removed from the `ref` table, so it should only contain clean data**.
+Let Stuart know if this is not the case.
 
   - `time`: The timestamp of recording
   - `location`: Where the instrument was located when it made the recording
+  - `version`: The reference data version where available.
   - `measurand`: The pollutant being measured
   - `measurement`: The measurement value itself
 
@@ -46,7 +53,7 @@ If you need further control, or wish to view all the related metadata, then the 
   - `sensorcalibration`: A list of calibration versions for each sensor, so that e.g. for any point in time you can have more than one NO2 measurement from a given sensor, corresponding to different calibration routines
   - `measurand`: A list of all the pollutants measured as part of the study and their units
   - `measurement`: The main table comprising the measurements themselves
-  - `flag`: A list of all flagged data, currently implemented only for reference data
+  - `flag`: A list of all flagged measurements
 
 ## Access from Python
 
@@ -67,20 +74,20 @@ df
 ```
 
 ```python
-                      time location instrument measurand  measurement
-0      2021-01-01 03:15:00   London     AQM389        O3     12.44100
-1      2021-01-01 00:01:00   London     AQM389        O3     11.46300
-2      2021-01-01 00:02:00   London     AQM389        O3     11.63800
-3      2021-01-01 00:03:00   London     AQM389        O3     13.35300
-4      2021-01-01 00:04:00   London     AQM389        O3     11.07600
-...                    ...      ...        ...       ...          ...
-257531 2021-03-31 21:26:00     York     Zep309        O3      9.88709
-257532 2021-03-31 21:27:00     York     Zep309        O3     12.61380
-257533 2021-03-31 21:28:00     York     Zep309        O3      9.66161
-257534 2021-03-31 21:29:00     York     Zep309        O3      2.37594
-257535 2021-03-31 21:30:00     York     Zep309        O3      8.21266
+                      time location instrument  sensornumber     version measurand  measurement   flag       flagreason
+0      2021-01-01 02:11:00   London     AQM389             1        cal1        O3     15.31700   None             None
+1      2021-01-01 03:25:00   London     AQM389             1        cal1        O3     15.44100   None             None
+2      2021-01-01 10:01:00   London     AQM389             1        cal1        O3     16.80600   None             None
+3      2021-01-01 11:13:00   London     AQM389             1        cal1        O3      5.90000  Error  Depletion Event
+4      2021-01-01 12:49:00   London     AQM389             1        cal1        O3      7.17800   None             None
+...                    ...      ...        ...           ...         ...       ...          ...    ...              ...
+385669 2021-03-30 00:05:00     York     Zep309             1  out-of-box        O3      5.57365   None             None
+385670 2021-03-30 08:53:00     York     Zep309             1  out-of-box        O3      0.00000   None             None
+385671 2021-03-31 07:54:00     York     Zep309             1  out-of-box        O3      0.00000   None             None
+385672 2021-03-31 09:47:00     York     Zep309             1  out-of-box        O3      0.00000   None             None
+385673 2021-03-31 20:19:00     York     Zep309             1  out-of-box        O3      5.03499   None             None
 
-[257536 rows x 5 columns]
+[385674 rows x 9 columns]
 ```
 
 ## Access from R
@@ -105,33 +112,33 @@ You can then access the database and manipulate tables as if they are local data
 # Obtains the latest calibrations for NO2 for Zep188
 # NB: This doesn't actually download the data from the DB
 tbl(con, "lcs") |>
-    filter(measurand == 'NO2', device == 'Zep188')
+    filter(measurand == 'NO2', instrument == 'Zep188')
 ```
 
 ```r
-# Source:   SQL [?? x 5]
+# Source:   SQL [?? x 9]
 # Database: postgres  [waclquant_edit@localhost:/waclquant]
-   time                location   instrument measurand measurement
-   <dttm>              <chr>      <chr>      <chr>           <dbl>
- 1 2019-12-10 14:40:00 Manchester Zep188     NO2             162. 
- 2 2019-12-10 14:41:00 Manchester Zep188     NO2              86.6
- 3 2019-12-10 14:42:00 Manchester Zep188     NO2              53.9
- 4 2019-12-10 14:43:00 Manchester Zep188     NO2              40.3
- 5 2019-12-10 14:44:00 Manchester Zep188     NO2              36.9
- 6 2019-12-10 14:45:00 Manchester Zep188     NO2              31.9
- 7 2019-12-10 14:46:00 Manchester Zep188     NO2              29.0
- 8 2019-12-10 14:47:00 Manchester Zep188     NO2              25.9
- 9 2019-12-10 14:48:00 Manchester Zep188     NO2              24.2
-10 2019-12-10 14:49:00 Manchester Zep188     NO2              24.5
-# … with more rows
-# ℹ Use `print(n = ...)` to see more rows
-
+   time                location   instru…¹ senso…² version measu…³ measu…⁴ flag 
+   <dttm>              <chr>      <chr>      <int> <chr>   <chr>     <dbl> <chr>
+ 1 2019-12-10 14:40:00 Manchester Zep188         1 out-of… NO2       162.  NA   
+ 2 2019-12-10 14:41:00 Manchester Zep188         1 out-of… NO2        86.6 NA   
+ 3 2019-12-10 14:42:00 Manchester Zep188         1 out-of… NO2        53.9 NA   
+ 4 2019-12-10 14:43:00 Manchester Zep188         1 out-of… NO2        40.3 NA   
+ 5 2019-12-10 14:44:00 Manchester Zep188         1 out-of… NO2        36.9 NA   
+ 6 2019-12-10 14:45:00 Manchester Zep188         1 out-of… NO2        31.9 NA   
+ 7 2019-12-10 14:46:00 Manchester Zep188         1 out-of… NO2        29.0 NA   
+ 8 2019-12-10 14:47:00 Manchester Zep188         1 out-of… NO2        25.9 NA   
+ 9 2019-12-10 14:48:00 Manchester Zep188         1 out-of… NO2        24.2 NA   
+10 2019-12-10 14:49:00 Manchester Zep188         1 out-of… NO2        24.5 NA   
+# … with more rows, 1 more variable: flagreason <chr>, and abbreviated variable
+#   names ¹​instrument, ²​sensornumber, ³​measurand, ⁴​measurement
+# ℹ Use `print(n = ...)` to see more rows, and `colnames()` to see all variable names
 ```
 
 ```r
 # Pull the data with collect()
 df <- tbl(con, "lcs") |>
-    filter(measurand == 'NO2', device == 'Zep188') |>
+    filter(measurand == 'NO2', instrument == 'Zep188') |>
     select(time, location, instrument, NO2=measurement) |>
     collect()
 ```
