@@ -19,3 +19,6 @@ CREATE INDEX idx_lcs_hourly_time ON lcs_hourly(time);
 
 CREATE INDEX idx_ref_measurand_location_time ON ref(measurand, time, location);
 CREATE INDEX idx_ref_time ON ref(time);
+
+CREATE INDEX idx_ref_hourly_measurand_location_time ON ref_hourly(measurand, time, location);
+CREATE INDEX idx_ref_hourly_time ON ref_hourly(time);

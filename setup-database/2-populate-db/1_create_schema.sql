@@ -25,6 +25,7 @@ DROP TABLE IF EXISTS FlagTypes CASCADE;
 DROP MATERIALIZED VIEW IF EXISTS lcs;
 DROP MATERIALIZED VIEW IF EXISTS ref;
 DROP MATERIALIZED VIEW IF EXISTS lcs_hourly;
+DROP MATERIALIZED VIEW IF EXISTS ref_hourly;
 
 CREATE TABLE InstrumentType (
     InstrumentTypeID INTEGER PRIMARY KEY,
@@ -214,3 +215,16 @@ LEFT JOIN (
        AND t2.time = flg.time
 WHERE NOT (t2.instrument = 'LGR_Manchester' AND t2.measurand = 'CO')
       AND flg.flag IS NULL;
+
+CREATE MATERIALIZED VIEW ref_hourly AS
+SELECT DATE_TRUNC('hour', time) as time,
+       location,
+       version,
+       measurand,
+       AVG(measurement) as measurement
+FROM ref
+GROUP BY
+    DATE_TRUNC('hour', time),
+    location,
+    version,
+    measurand;
