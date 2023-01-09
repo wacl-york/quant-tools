@@ -345,18 +345,38 @@ thermo_files <- list.files(sprintf("%s/OSCA_MAQS_Thermo_49i_O3", ceda_dir), recu
 thermo_files <- thermo_files[!grepl("oldfiles", thermo_files)]
 instrument_name <- "Thermo49i_Manchester"
 thermo_ceda <- map_dfr(setNames(thermo_files, thermo_files), read_csv, show_col_types=FALSE, .id="filename") |>
-  select(time=datetime,
-         O3_measurement=`Ozone (ppb)`,
-         O3_flag=O3_qc_flags) |>
+    mutate(version = str_split(gsub("\\.csv", "", basename(filename)), "_"), 
+           version = map_chr(version, function(x) paste(x[(length(x)-1):length(x)],
+                                                        collapse='')),
+           version = gsub("v", "", version)
+    ) |>
+    select(time=datetime,
+           O3_measurement=`Ozone (ppb)`,
+           O3_flag=O3_qc_flags,
+           version) |>
     mutate(
          instrument = instrument_name,
          instrumenttypeid = 2) |>  # For some reason the temperature flag is never set despite clear errors 
     pivot_longer(c(starts_with("O3")),
                  names_pattern="(.+)_(.+)", names_to=c("measurand", "type")) |>
     pivot_wider(names_from=type, values_from=value) |>
+    rename(calibrationname=version) |>
     mutate(sensornumber=1,
-           calibrationname="ratified",
            location="Manchester")  # Only have 1 sensor per measurand
+
+# Find most recent measurement for each calibrationname
+max_dates <- tbl(con, "measurement") |>
+                filter(instrument == instrument_name) |>
+                group_by(instrument, calibrationname) |>
+                summarise(max_date = max(time, na.rm=T)) |>
+                ungroup() |>
+                collect()
+# Restrict to measurements don't already have in DB
+# Either new calibration names (NA max_date) or new date (time > max_date)
+thermo_ceda <- thermo_ceda |>
+    left_join(max_dates, by=c("instrument", "calibrationname")) |>
+    filter(is.na(max_date) | time > max_date)
+
 # instrument
 dbAppendTable(con, "instrument", thermo_ceda |> distinct(instrument, instrumenttypeid))
 # referenceinstrument
@@ -377,8 +397,14 @@ teledyne_files <- list.files(sprintf("%s/OSCA_MAQS_Teledyne_T500U_NO2", ceda_dir
 teledyne_files <- teledyne_files[!grepl("oldfiles", teledyne_files)]
 
 instrument_name <- "TeledyneT500U_Manchester"
-teledyne_ceda <- map_dfr(teledyne_files, read_csv, show_col_types=FALSE) |>
+teledyne_ceda <- map_dfr(setNames(teledyne_files, teledyne_files), read_csv, show_col_types=FALSE, .id="filename") |>
+    mutate(version = str_split(gsub("\\.csv", "", basename(filename)), "_"), 
+           version = map_chr(version, function(x) paste(x[(length(x)-1):length(x)],
+                                                        collapse='')),
+           version = gsub("v", "", version)
+    ) |>
   select(time=datetime,
+         version,
          NO2_measurement=`NO2 (ppb)`,
          NO2_flag=NO2_qc_flags) |>
     mutate(
@@ -387,9 +413,23 @@ teledyne_ceda <- map_dfr(teledyne_files, read_csv, show_col_types=FALSE) |>
     pivot_longer(c(starts_with("NO2")),
                  names_pattern="(.+)_(.+)", names_to=c("measurand", "type")) |>
     pivot_wider(names_from=type, values_from=value) |>
+    rename(calibrationname = version) |>
     mutate(sensornumber=1,
-           calibrationname="Unratified2.2",
            location="Manchester")  # Only have 1 sensor per measurand
+
+# Find most recent measurement for each calibrationname
+max_dates <- tbl(con, "measurement") |>
+                filter(instrument == instrument_name) |>
+                group_by(instrument, calibrationname) |>
+                summarise(max_date = max(time, na.rm=T)) |>
+                ungroup() |>
+                collect()
+# Restrict to measurements don't already have in DB
+# Either new calibration names (NA max_date) or new date (time > max_date)
+teledyne_ceda <- teledyne_ceda |>
+    left_join(max_dates, by=c("instrument", "calibrationname")) |>
+    filter(is.na(max_date) | time > max_date)
+
 # instrument
 dbAppendTable(con, "instrument", teledyne_ceda |> distinct(instrument, instrumenttypeid))
 # referenceinstrument
@@ -409,8 +449,14 @@ dbAppendTable(con, "flag", teledyne_ceda |> filter(flag != 1) |> select(instrume
 thermo_files <- list.files(sprintf("%s/OSCA_MAQS_Thermo_49iY_NO-NOy", ceda_dir), recursive = TRUE, full.names = TRUE, pattern="*.csv")
 thermo_files <- thermo_files[!grepl("oldfiles", thermo_files)]
 instrument_name <- "Thermo49iY_Manchester"
-thermo_ceda <- map_dfr(thermo_files, read_csv, show_col_types=FALSE) |>
+thermo_ceda <- map_dfr(setNames(thermo_files, thermo_files), read_csv, show_col_types=FALSE, .id="filename") |>
+    mutate(version = str_split(gsub("\\.csv", "", basename(filename)), "_"), 
+           version = map_chr(version, function(x) paste(x[(length(x)-1):length(x)],
+                                                        collapse='')),
+           version = gsub("v", "", version)
+    ) |>
   select(time=datetime,
+         version,
          NO_measurement=`NO (ppb)`,
          NO_flag=NOy_qc_flags) |>
     mutate(
@@ -419,9 +465,23 @@ thermo_ceda <- map_dfr(thermo_files, read_csv, show_col_types=FALSE) |>
     pivot_longer(c(starts_with("NO")),
                  names_pattern="(.+)_(.+)", names_to=c("measurand", "type")) |>
     pivot_wider(names_from=type, values_from=value) |>
+    rename(calibrationname = version) |>
     mutate(sensornumber=1,
-           calibrationname="ratified",
            location="Manchester")  # Only have 1 sensor per measurand
+
+# Find most recent measurement for each calibrationname
+max_dates <- tbl(con, "measurement") |>
+                filter(instrument == instrument_name) |>
+                group_by(instrument, calibrationname) |>
+                summarise(max_date = max(time, na.rm=T)) |>
+                ungroup() |>
+                collect()
+# Restrict to measurements don't already have in DB
+# Either new calibration names (NA max_date) or new date (time > max_date)
+thermo_ceda <- thermo_ceda |>
+    left_join(max_dates, by=c("instrument", "calibrationname")) |>
+    filter(is.na(max_date) | time > max_date)
+
 # instrument
 dbAppendTable(con, "instrument", thermo_ceda |> distinct(instrument, instrumenttypeid))
 # referenceinstrument
@@ -441,8 +501,14 @@ dbAppendTable(con, "flag", thermo_ceda |> filter(flag != 1) |> select(instrument
 thermo_files <- list.files(sprintf("%s/OSCA_MAQS_Thermo_48i_CO", ceda_dir), recursive = TRUE, full.names = TRUE, pattern="*.csv")
 thermo_files <- thermo_files[!grepl("oldfiles", thermo_files)]
 instrument_name <- "Thermo48i_Manchester"
-thermo_ceda <- map_dfr(thermo_files, read_csv, show_col_types=FALSE) |>
+thermo_ceda <- map_dfr(setNames(thermo_files, thermo_files), read_csv, show_col_types=FALSE, .id="filename") |>
+    mutate(version = str_split(gsub("\\.csv", "", basename(filename)), "_"), 
+           version = map_chr(version, function(x) paste(x[(length(x)-1):length(x)],
+                                                        collapse='')),
+           version = gsub("v", "", version)
+    ) |>
   select(time=datetime,
+         version,
          CO_measurement=`CO (ppb)`,
          CO_flag=CO_qc_flags) |>
     mutate(
@@ -451,9 +517,23 @@ thermo_ceda <- map_dfr(thermo_files, read_csv, show_col_types=FALSE) |>
     pivot_longer(c(starts_with("CO")),
                  names_pattern="(.+)_(.+)", names_to=c("measurand", "type")) |>
     pivot_wider(names_from=type, values_from=value) |>
+    rename(calibrationname = version) |>
     mutate(sensornumber=1,
-           calibrationname="ratified",
            location="Manchester")  # Only have 1 sensor per measurand
+
+# Find most recent measurement for each calibrationname
+max_dates <- tbl(con, "measurement") |>
+                filter(instrument == instrument_name) |>
+                group_by(instrument, calibrationname) |>
+                summarise(max_date = max(time, na.rm=T)) |>
+                ungroup() |>
+                collect()
+# Restrict to measurements don't already have in DB
+# Either new calibration names (NA max_date) or new date (time > max_date)
+thermo_ceda <- thermo_ceda |>
+    left_join(max_dates, by=c("instrument", "calibrationname")) |>
+    filter(is.na(max_date) | time > max_date)
+
 # instrument
 dbAppendTable(con, "instrument", thermo_ceda |> distinct(instrument, instrumenttypeid))
 # referenceinstrument
@@ -473,8 +553,14 @@ dbAppendTable(con, "flag", thermo_ceda |> filter(flag != 1) |> select(instrument
 lgr_files <- list.files(sprintf("%s/OSCA_MAQS_LGR_CH4_CO_CO2_H2O", ceda_dir), recursive = TRUE, full.names = TRUE, pattern="*.csv")
 lgr_files <- lgr_files[!grepl("oldfiles", lgr_files)]
 instrument_name <- "LGR_Manchester"
-lgr_ceda <- map_dfr(lgr_files, read_csv, show_col_types=FALSE) |>
+lgr_ceda <- map_dfr(setNames(lgr_files, lgr_files), read_csv, show_col_types=FALSE, .id="filename") |>
+    mutate(version = str_split(gsub("\\.csv", "", basename(filename)), "_"), 
+           version = map_chr(version, function(x) paste(x[(length(x)-1):length(x)],
+                                                        collapse='')),
+           version = gsub("v", "", version)
+    ) |>
   select(time=datetime,
+         version,
          CH4_measurement=`CH4 (ppm)`,
          H2O_measurement=`H2O (ppm)`,
          CO2_measurement=`CO2 (ppm)`,
@@ -487,12 +573,26 @@ lgr_ceda <- map_dfr(lgr_files, read_csv, show_col_types=FALSE) |>
     mutate(
          instrument = instrument_name,
          instrumenttypeid = 2) |>  # For some reason the temperature flag is never set despite clear errors 
-    pivot_longer(-c(time, instrument, instrumenttypeid),
+    pivot_longer(-c(time, version, instrument, instrumenttypeid),
                  names_pattern="(.+)_(.+)", names_to=c("measurand", "type")) |>
     pivot_wider(names_from=type, values_from=value) |>
+    rename(calibrationname = version) |>
     mutate(sensornumber=1,
-           calibrationname="ratified",
            location="Manchester")  # Only have 1 sensor per measurand
+
+# Find most recent measurement for each calibrationname
+max_dates <- tbl(con, "measurement") |>
+                filter(instrument == instrument_name) |>
+                group_by(instrument, calibrationname) |>
+                summarise(max_date = max(time, na.rm=T)) |>
+                ungroup() |>
+                collect()
+# Restrict to measurements don't already have in DB
+# Either new calibration names (NA max_date) or new date (time > max_date)
+lgr_ceda <- lgr_ceda |>
+    left_join(max_dates, by=c("instrument", "calibrationname")) |>
+    filter(is.na(max_date) | time > max_date)
+
 # instrument
 dbAppendTable(con, "instrument", lgr_ceda |> distinct(instrument, instrumenttypeid))
 # referenceinstrument
@@ -511,8 +611,14 @@ dbAppendTable(con, "flag", lgr_ceda |> filter(flag != 1) |> select(instrument, m
 ###### WS + WD
 sonic_files <- list.files(sprintf("%s/OSCA_MAQS_Sonic_Windmaster", ceda_dir), recursive = TRUE, full.names = TRUE, pattern="*.csv")
 instrument_name <- "Sonic_Manchester"
-sonic_ceda <- map_dfr(sonic_files, read_csv, show_col_types=FALSE) |>
+sonic_ceda <- map_dfr(setNames(sonic_files, sonic_files), read_csv, show_col_types=FALSE, .id="filename") |>
+    mutate(version = str_split(gsub("\\.csv", "", basename(filename)), "_"), 
+           version = map_chr(version, function(x) paste(x[(length(x)-1):length(x)],
+                                                        collapse='')),
+           version = gsub("v", "", version)
+    ) |>
   select(time=datetime,
+         version,
          WindSpeed_measurement=`wind_Sp (m/s)`,
          WindDirection_measurement=`wind_Dr (deg)`,
          WindSpeed_flag=qc_flag_wind_Sp,
@@ -523,9 +629,23 @@ sonic_ceda <- map_dfr(sonic_files, read_csv, show_col_types=FALSE) |>
     pivot_longer(c(starts_with("WindSpeed"), starts_with("WindDirection")),
                  names_pattern="(.+)_(.+)", names_to=c("measurand", "type")) |>
     pivot_wider(names_from=type, values_from=value) |>
+    rename(calibrationname = version) |>
     mutate(sensornumber=1,
-           calibrationname="Ratified2.1",
            location="Manchester")  # Only have 1 sensor per measurand
+
+# Find most recent measurement for each calibrationname
+max_dates <- tbl(con, "measurement") |>
+                filter(instrument == instrument_name) |>
+                group_by(instrument, calibrationname) |>
+                summarise(max_date = max(time, na.rm=T)) |>
+                ungroup() |>
+                collect()
+# Restrict to measurements don't already have in DB
+# Either new calibration names (NA max_date) or new date (time > max_date)
+sonic_ceda <- sonic_ceda |>
+    left_join(max_dates, by=c("instrument", "calibrationname")) |>
+    filter(is.na(max_date) | time > max_date)
+
 # instrument
 dbAppendTable(con, "instrument", sonic_ceda |> distinct(instrument, instrumenttypeid))
 # referenceinstrument
@@ -544,8 +664,14 @@ dbAppendTable(con, "flag", sonic_ceda |> filter(flag != 1) |> select(instrument,
 ###### Temp + RH
 met_files <- list.files(sprintf("%s/OSCA_Manc_FIDAS_Met", ceda_dir), recursive = TRUE, full.names = TRUE, pattern="*.csv")
 instrument_name <- "FIDAS_Manchester"
-met_ceda <- map_dfr(met_files, read_csv, show_col_types=FALSE) |>
+met_ceda <- map_dfr(setNames(met_files, met_files), read_csv, show_col_types=FALSE, .id="filename") |>
+    mutate(version = str_split(gsub("\\.csv", "", basename(filename)), "_"), 
+           version = map_chr(version, function(x) paste(x[(length(x)-1):length(x)],
+                                                        collapse='')),
+           version = gsub("v", "", version)
+    ) |>
   select(time=datetime,
+         version,
          Temperature_measurement=`Temperature (deg C)`,
          Pressure_measurement=`Pressure (mbar)`,
          RelHumidity_measurement=`Humidity (%)`,
@@ -559,9 +685,22 @@ met_ceda <- map_dfr(met_files, read_csv, show_col_types=FALSE) |>
     pivot_longer(c(starts_with("Temperature"), starts_with("Pressure"), starts_with("RelHumidity")),
                  names_pattern="(.+)_(.+)", names_to=c("measurand", "type")) |>
     pivot_wider(names_from=type, values_from=value) |>
+    rename(calibrationname=version) |>
     mutate(sensornumber=1,
-           calibrationname="Ratified2.1",
            location="Manchester")  # Only have 1 sensor per measurand
+
+# Find most recent measurement for each calibrationname
+max_dates <- tbl(con, "measurement") |>
+                filter(instrument == instrument_name) |>
+                group_by(instrument, calibrationname) |>
+                summarise(max_date = max(time, na.rm=T)) |>
+                ungroup() |>
+                collect()
+# Restrict to measurements don't already have in DB
+# Either new calibration names (NA max_date) or new date (time > max_date)
+met_ceda <- met_ceda |>
+    left_join(max_dates, by=c("instrument", "calibrationname")) |>
+    filter(is.na(max_date) | time > max_date)
 
 # instrument
 dbAppendTable(con, "instrument", met_ceda |> distinct(instrument, instrumenttypeid))
@@ -581,8 +720,14 @@ dbAppendTable(con, "flag", met_ceda |> filter(flag != 1) |> select(instrument, m
 ###### PM
 fidas_files <- list.files(sprintf("%s/OSCA_Manc_FIDAS_PM", ceda_dir), recursive = TRUE, full.names = TRUE, pattern="*.csv")
 instrument_name <- "FIDAS_Manchester"
-fidas_ceda <- map_dfr(fidas_files, read_csv, show_col_types=FALSE) |>
+fidas_ceda <- map_dfr(setNames(fidas_files, fidas_files), read_csv, show_col_types=FALSE, .id="filename") |>
+    mutate(version = str_split(gsub("\\.csv", "", basename(filename)), "_"), 
+           version = map_chr(version, function(x) paste(x[(length(x)-1):length(x)],
+                                                        collapse='')),
+           version = gsub("v", "", version)
+    ) |>
   select(time=datetime,
+         version,
          PM1_measurement=`PM1 (ug/m3)`,
          PM25_measurement=`PM2.5 (ug/m3)`,
          PM10_measurement=`PM10 (ug/m3)`,
@@ -598,10 +743,24 @@ fidas_ceda <- map_dfr(fidas_files, read_csv, show_col_types=FALSE) |>
     pivot_longer(starts_with("PM"),
                  names_pattern="(.+)_(.+)", names_to=c("measurand", "type")) |>
     pivot_wider(names_from=type, values_from=value) |>
+    rename(calibrationname = version) |>
     mutate(sensornumber=1,
            measurand=gsub("PM25", "PM2.5", measurand),
-           calibrationname="Ratified2.1",
            location="Manchester")  # Only have 1 sensor per measurand
+
+# Find most recent measurement for each calibrationname
+max_dates <- tbl(con, "measurement") |>
+                filter(instrument == instrument_name) |>
+                group_by(instrument, calibrationname) |>
+                summarise(max_date = max(time, na.rm=T)) |>
+                ungroup() |>
+                collect()
+# Restrict to measurements don't already have in DB
+# Either new calibration names (NA max_date) or new date (time > max_date)
+fidas_ceda <- fidas_ceda |>
+    left_join(max_dates, by=c("instrument", "calibrationname")) |>
+    filter(is.na(max_date) | time > max_date)
+
 # sensor
 dbAppendTable(con, "sensor", fidas_ceda |> distinct(instrument, measurand, sensornumber))
 # sensorcalibration
