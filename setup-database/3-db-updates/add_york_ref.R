@@ -3,11 +3,8 @@
 # Author: Stuart Lacy
 # Date: 2022-01-24
 #
-# Populates the SQLite database with PM reference data from the 
+# Populates the SQLite database with reference data from the 
 # York Fishergate site.
-# This data is available on AURN and has been routinely scraped
-# as part of the main QUANT scraping program, but was mistakenly
-# not included in the initial DB setup.
 
 library(tidyverse)
 library(data.table)
@@ -19,23 +16,8 @@ library(RSQLite)
 CLEAN_DIR <- "/home/stuart/Documents/quant_data/Clean"
 DB_FN <- "/home/stuart/Documents/quant_data/quant.db"
 
-###### PM
-# PM data is obtained from daily scrape of AURN
 # Use Python version of load_data as is more efficient
 ld <- import("load_data")
-
-df_aurn <- ld$load_data(CLEAN_DIR,
-                        companies="AURN",
-                        subset=NULL,
-                        resample=NULL)
-
-# Remove error codes and missing values
-df_aurn <- df_aurn %>%
-    rename(PM25 = `PM2.5`) %>%
-    mutate(PM10 = ifelse(PM10 == -99, NA, PM10),
-           PM25 = ifelse(PM25 == -99, NA, PM25)) %>%
-    filter(! (is.na(PM10) & (is.na(PM25))))
-
 
 ##### Ozone
 gdrive_dir <- "~/GoogleDrive/WACL/BOCS/Calibration/Analyses/data/Reference/York/"
@@ -85,8 +67,7 @@ df_no2$NO <- df_no2$NO * 100
 
 ###### Combining streams
 # Combine datasets into 1 data frame
-comb <- full_join(df_aurn, df_o3, by="timestamp")
-comb <- full_join(comb, df_no2, by="timestamp")
+comb <- full_join(df_o3, df_no2, by="timestamp")
 comb$location <- "York"
 
 # Get required column names from DB
