@@ -103,7 +103,8 @@ to_upload <- df_2022 |>
     mutate(sensornumber=1, calibrationname="Unratified2022",
            instrument=sprintf("Ref_London_%s", measurand),
            instrument = gsub("PM.+", "PM", instrument)) |>
-    select(instrument, measurand, sensornumber, calibrationname, time, measurement)
+    select(instrument, measurand, sensornumber, calibrationname, time, measurement) |>
+    filter(!is.na(measurement))
 
 # Firstly add Unratified calibration versions
 dbAppendTable(con, "sensorcalibration", 
