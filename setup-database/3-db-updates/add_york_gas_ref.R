@@ -2,34 +2,30 @@
 # ~~~~~~~~~~~~~~
 # Author: Stuart Lacy
 # Date: 2022-01-24
+# Updated: 2023-02-23
 #
-# Populates the SQLite database with reference data from the 
+# Populates the Postgres database with O3,NO2, and NO reference data from the 
 # York Fishergate site.
-
 library(tidyverse)
 library(data.table)
 library(lubridate)
-library(reticulate)
 library(odbc)
-library(RSQLite)
 
-CLEAN_DIR <- "/home/stuart/Documents/quant_data/Clean"
-DB_FN <- "/home/stuart/Documents/quant_data/quant.db"
-
-# Use Python version of load_data as is more efficient
-ld <- import("load_data")
+con <- dbConnect(odbc(), "QUANT")
 
 ##### Ozone
 gdrive_dir <- "~/GoogleDrive/WACL/BOCS/Calibration/Analyses/data/Reference/York/"
 # Ozone and NO2 have been manually pulled from the instrument and uploaded to Google Drive
 raw_dir <- paste0(gdrive_dir, "Ozone/raw")
-all_files <- paste(raw_dir, list.files(raw_dir), sep="/")
-df_o3 <- map_dfr(all_files, read_csv, col_names=c("Ozone", "Temp", "Pressure", "Flow", "Date", "Time"), col_types=c(rep("d", 4), "D", "t"))
+all_files <- list.files(raw_dir, full.names = TRUE)
+df_o3 <- map_dfr(setNames(all_files, all_files), read_csv, col_names=c("Ozone", "Temp", "Pressure", "Flow", "Date", "Time"), col_types=c(rep("d", 4), "D", "t"),
+                 .id="fn")
 # Parse datetime
 df_o3 <- df_o3 %>%
     mutate(timestamp = sprintf("%s %s", Date, Time),
            timestamp = as_datetime(timestamp, format="%d/%m/%y %H:%M:%S", tz="UTC")) %>%
-    select(timestamp, Ozone, Temp, Pressure, Flow, Date, Time)
+    select(timestamp, Ozone, Temp, Pressure, Flow, Date, Time) |>
+    filter(!is.na(timestamp))
 # Round down to nearest minute and average in case have multiple
 df_o3$timestamp <- floor_date(df_o3$timestamp, "1 min")
 df_o3 <- df_o3 %>%
@@ -42,28 +38,31 @@ df_o3 <- df_o3 %>%
 # Have manually checked and there are no outliers in the Ozone data
 
 ##### NO2
-df_no2 <- read_csv(paste0(gdrive_dir, "NOx/raw/19 Oct 2020_10 Aug 2022.csv"), skip = 3, col_names = c("timestamp", "time2", "NOxDiff", "NOx", "NO2", "NO"))
-# Parse into datetime
-df_no2 <- df_no2 %>%
+df_no2 <- read_csv(paste0(gdrive_dir, "NOx/raw/19 Oct 2020_10 Aug 2022.csv"), skip = 3, 
+                   col_names = c("timestamp", "time2", "NOxDiff", "NOx", "NO2", "NO")) |>
     separate(timestamp, into=c("date", "time"), sep=" ") %>%
     separate(time, into=c("hour", "min"), sep=":") %>%
     mutate(hour = sprintf("%02d", as.integer(hour)),
            second = "00") %>%
     unite(time, c("hour", "min", "second"), sep=":") %>%
     unite(timestamp, c("date", "time"), sep=" ") %>%
-    mutate(timestamp = as_datetime(timestamp, format="%m/%d/%Y %H:%M:%S", tz="UTC"))
-
-# Round down to nearest minute and average in case have multiple
-df_no2$timestamp <- floor_date(df_no2$timestamp, "1 min")
-df_no2 <- df_no2 %>%
+    # Round down to nearest minute and average in case have multiple
+    mutate(timestamp = as_datetime(timestamp, format="%m/%d/%Y %H:%M:%S", tz="UTC"),
+           floor_date(df_no2$timestamp, "1 min")) |>
     group_by(timestamp) %>%
-    summarise(NO2 = mean(NO2, na.rm=T),
-              NO = mean(NO, na.rm=T)) %>%
-    ungroup()
+    summarise(
+        NOx = mean(NOx, na.rm=T),
+        NO2_raw = mean(NO2, na.rm=T),
+        NO = mean(NO, na.rm=T)) %>%
+    ungroup() |>
+    # Converting to ppb from mV
+    mutate(
+        NOx = NOx * 100,
+        NO2_raw = NO2_raw * 100,
+        NO = NO * 10,
+        NO2_manual=NOx - NO,
+    )
 
-# NO2 and NO units need converting to ppb from mV
-df_no2$NO2 <- df_no2$NO2 * 100
-df_no2$NO <- df_no2$NO * 100
 
 ###### Combining streams
 # Combine datasets into 1 data frame
