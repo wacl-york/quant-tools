@@ -214,6 +214,7 @@ LEFT JOIN (
        AND t2.calibrationname = flg.calibrationname
        AND t2.time = flg.time
 WHERE NOT (t2.instrument = 'LGR_Manchester' AND t2.measurand = 'CO')
+      AND t2.instrument != 'FIDAS_York'
       AND flg.flag IS NULL;
 
 CREATE MATERIALIZED VIEW ref_hourly AS
