@@ -12,9 +12,9 @@ library(lubridate)
 library(odbc)
 
 con <- dbConnect(odbc(), "QUANT")
+gdrive_dir <- "~/GoogleDrive/WACL/BOCS/Calibration/Analyses/data/Reference/York/"
 
 ##### Ozone
-gdrive_dir <- "~/GoogleDrive/WACL/BOCS/Calibration/Analyses/data/Reference/York/"
 # Ozone and NO2 have been manually pulled from the instrument and uploaded to Google Drive
 raw_dir <- paste0(gdrive_dir, "Ozone/raw")
 all_files <- list.files(raw_dir, full.names = TRUE)
@@ -39,7 +39,7 @@ df_o3 <- df_o3 %>%
 
 ##### NO2
 df_no2 <- read_csv(paste0(gdrive_dir, "NOx/raw/19 Oct 2020_10 Aug 2022.csv"), skip = 3, 
-                   col_names = c("timestamp", "time2", "NOxDiff", "NOx", "NO2", "NO")) |>
+                   col_names = c("timestamp", "time2", "NOxDiff", "NOx", "NO", "NO2")) |>
     separate(timestamp, into=c("date", "time"), sep=" ") %>%
     separate(time, into=c("hour", "min"), sep=":") %>%
     mutate(hour = sprintf("%02d", as.integer(hour)),
@@ -47,9 +47,9 @@ df_no2 <- read_csv(paste0(gdrive_dir, "NOx/raw/19 Oct 2020_10 Aug 2022.csv"), sk
     unite(time, c("hour", "min", "second"), sep=":") %>%
     unite(timestamp, c("date", "time"), sep=" ") %>%
     # Round down to nearest minute and average in case have multiple
-    mutate(timestamp = as_datetime(timestamp, format="%m/%d/%Y %H:%M:%S", tz="UTC"),
-           floor_date(df_no2$timestamp, "1 min")) |>
-    group_by(timestamp) %>%
+    mutate(time = as_datetime(timestamp, format="%m/%d/%Y %H:%M:%S", tz="UTC"),
+           floor_date(time, "1 min")) |>
+    group_by(time) %>%
     summarise(
         NOx = mean(NOx, na.rm=T),
         NO2_raw = mean(NO2, na.rm=T),
@@ -59,10 +59,8 @@ df_no2 <- read_csv(paste0(gdrive_dir, "NOx/raw/19 Oct 2020_10 Aug 2022.csv"), sk
     mutate(
         NOx = NOx * 100,
         NO2_raw = NO2_raw * 100,
-        NO = NO * 10,
-        NO2_manual=NOx - NO,
+        NO = NO * 100
     )
-
 
 ###### Combining streams
 # Combine datasets into 1 data frame

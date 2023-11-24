@@ -1,0 +1,84 @@
+{
+  "title": "Quantification of Utility of Atmospheric Network Technologies: (QUANT): Low-cost air quality measurements from 52 commerical devices at three UK urban monitoring sites.",
+  "description": "This dataset contains air quality measurements from 52 commercial low-cost devices at three UK urban monitoring sites over a period of 3 years. This data was collected as part of the QUANT project, specifically Work Package 1 which had the objective to deliver 'Transparent assessment of commercial low-cost sensor devices in multiple UK urban environments'. The three sites are the Manchester Air Quality Supersite (MAQS), London Air Quality Supersite (LAQS), and the Fishergate AURN monitoring site in York. MAQS and LAQS are urban background locations, while Fishergate is a roadside site. The devices report a range of species, with every device measuring either NO2 or PM2.5, with the vast majority recording both. The data was collected over the period 2019-12-10 to 2022-10-31, with half the devices being deployed throughout this entire period and the other half starting in July 2021 as part of a side-study referred to as the Wider Participation Study.",
+  "authors": [
+    {
+      "firstname": "Stuart",
+      "surname": "Lacy"
+    },
+    {
+      "firstname": "Sebastian",
+      "surname": "Diez"
+    },
+    {
+      "firstname": "Pete",
+      "surname": "Edwards"
+    }
+  ],
+  "bbox": {
+    "north": "53.951917°",
+    "south": "\t 51.449694°",
+    "east": "\t -0.037389°",
+    "west": "-2.214417°"
+  },
+  "time_range": {
+    "start": "2019-12-10T00:00:00",
+    "end": "2022-10-31T23:59:59"
+  },
+  "lineage": "Data were collected and prepared for archiving by the instrument scientists before upload to the Centre for Environmental Data Analysis (CEDA) for long term archiving.",
+  "quality": "Data are as given by the data provider, no quality control has been performed by the Centre for Environmental Data Analysis (CEDA)",
+  "docs": [],
+  "project": {
+    "catalogue_url": "",
+    "title": "Quantification of Utility of Atmospheric Network Technologies: (QUANT)",
+    "description": "Low-cost air pollution sensors have a potentially vital role to play in tackling air pollution in the UK, and globally. The high time resolution and ability to create dense networks of these devices offers a paradigm shift in the way we measure key pollutants, evaluate health impacts of air pollution exposure and assess potential solutions. The QUANT project is assessing and enabling the use of low-cost sensors for UK clean air challenges. This is being achieved through the delivery of a real-world open and traceable assessment of commercial low-cost sensor devices, in a range of UK urban environments, and the development of novel data methods that enhance the information provided by these devices. QUANT is generating new data, using existing and developmental sensor technologies, and novel data methods in order to provide air pollution source information, and is also using data from existing UK sensor networks to demonstrate the retrieval of information currently not accessible to UK air pollution networks. This work has been supported by grants: NE/T00195X/1, NE/T001879/1, NE/T001860/1, NE/T001968/1, NE/T001801/1.",
+    "PI": [
+      {
+        "firstname": "Pete",
+        "lastname": "Edwards"
+      },
+      {
+        "firstname": "Rod",
+        "lastname": "Jones"
+      },
+      {
+        "firstname": "M I",
+        "lastname": "Mead"
+      },
+      {
+        "firstname": "N",
+        "lastname": "Harris"
+      },
+      {
+        "firstname": "Francis",
+        "lastname": "Pope"
+      },
+      {
+        "firstname": "Adam",
+        "lastname": "Boies"
+      },
+      {
+        "firstname": "Christine",
+        "lastname": "Braban"
+      }
+    ],
+    "funder": "Natural Environment Research Council",
+    "grant_number": [
+      "NE/T00195X/1",
+      "NE/T001879/1",
+      "NE/T001860/1",
+      "NE/T001968/1",
+      "NE/T001801/1"
+    ]
+  },
+  "instrument": {
+    "catalogue_url": "",
+    "title": "",
+    "description": ""
+  },
+  "computation": {
+    "catalogue_url": "",
+    "title": "",
+    "description": ""
+  }
+}
