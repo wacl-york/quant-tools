@@ -13,7 +13,7 @@ con <- dbConnect(RPostgres::Postgres(),
 )
 
 lcs_jobs <- tbl(con, "lcsinstrument") |>
-    filter(company != 'RLS') |>
+    filter(company %in% c('RLS', 'QuantAQ')) |>
     inner_join(tbl(con, "deployment"), by="instrument") |>
     inner_join(tbl(con, "sensor"), by="instrument") |>
     filter(measurand != 'SO2') |>
@@ -22,7 +22,6 @@ lcs_jobs <- tbl(con, "lcsinstrument") |>
     mutate(measurand = gsub("PM.+", "PM", measurand),
            measurand = gsub("Temperature", "Met", measurand),
            measurand = gsub("Pressure", "Met", measurand),
-           measurand = gsub("WindSpeed", "Met", measurand),
            measurand = gsub("RelHumidity", "Met", measurand)) |>
     distinct(instrument, measurand, location) |>
     mutate(out_dir=LCS_DIR, version=1) |>
