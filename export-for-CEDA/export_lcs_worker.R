@@ -102,7 +102,7 @@ export_to_netcdf <- function(in_instrument, in_measurand, in_location, out_dir, 
     first_date <- as_date(min(df$time))
     end_date <- as_date(max(df$time))
     
-    filename <- sprintf("%s/%s/%s_%s_%s_%s_%s_%s.nc",
+    filename <- sprintf("%s/%s/%s-%s-%s_%s_%s-%s.nc",
                         out_dir,
                         in_location,
                         gsub(" ", "", company_meta$companyhumanreadable),
