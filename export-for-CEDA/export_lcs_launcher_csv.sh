@@ -13,9 +13,8 @@
 #SBATCH --array=5,12,18,26,31,39,53,64,67,79,82,84,85,89,165,178
 
 echo "Loaded script"
-
-module load lang/R/4.2.1-foss-2022a
-module load data/PostgreSQL/13.3-GCCcore-10.3.0
+ml load R/4.3.2-gfbf-2023a
+ml load PostgreSQL/16.1-GCCcore-12.3.0
 echo "Loaded modules"
 Rscript --vanilla export_lcs_worker_csv.R $SLURM_ARRAY_TASK_ID
 echo "Ran job"
