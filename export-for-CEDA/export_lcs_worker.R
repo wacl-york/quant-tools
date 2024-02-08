@@ -62,8 +62,7 @@ measurand_netcdf_metadata <- tribble(
     "PM10", "pm10", "mass_concentration_of_pm10_ambient_aerosol_in_air", "Mass Concentration of PM10 Ambient Aerosol in air", "ug m-3", "",
     "Temperature", "air_temperature", "air_temperature", "Air Temperature", "K", "",
     "RelHumidity", "relative_humidity", "relative_humidity", "Relative Humidity", "%", "",
-    "Pressure", "air_pressure", "air_pressure", "Air Pressure", "hPa", "",
-    "WindSpeed", "wind_speed", "wind_speed", "Wind Speed", "m s-1", ""
+    "Pressure", "air_pressure", "air_pressure", "Air Pressure", "hPa", ""
     )
     
 export_to_netcdf <- function(in_instrument, in_measurand, in_location, out_dir, version=1) {
@@ -73,7 +72,7 @@ export_to_netcdf <- function(in_instrument, in_measurand, in_location, out_dir, 
         measurand_title <- 'PM'
         ncdf_title <- 'Particulate Matter Concentration'
     } else if (in_measurand == 'Met') {
-        in_measurand <- c('Temperature', 'RelHumidity', 'WindSpeed', 'Pressure')
+        in_measurand <- c('Temperature', 'RelHumidity', 'Pressure')
         measurand_title <- 'Met'
         ncdf_title <- 'Surface Meteorology'
     } else {

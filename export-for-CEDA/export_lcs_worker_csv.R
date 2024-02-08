@@ -43,7 +43,7 @@ export_to_csv <- function(in_instrument, in_measurand, in_location, out_dir, ver
         in_measurand <- c('PM1', 'PM2.5', 'PM4', 'PM10')
         measurand_title <- 'PM'
     } else if (in_measurand == 'Met') {
-        in_measurand <- c('Temperature', 'RelHumidity', 'WindSpeed', 'Pressure')
+        in_measurand <- c('Temperature', 'RelHumidity', 'Pressure')
         measurand_title <- 'Met'
     } else {
         measurand_title <- in_measurand
